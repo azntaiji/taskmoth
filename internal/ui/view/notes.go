@@ -55,6 +55,17 @@ var todayDoneNotes = []string{
 	"Clean sweep today. Take a bow.",
 }
 
+// MothArt is drawn under the empty Inbox's note (G6.15). It is plain
+// ASCII, so it needs no --ascii variant.
+var MothArt = []string{
+	`       \   /`,
+	`   .-.  \ /  .-.`,
+	`  (   '-(o)-'   )`,
+	`   '-.  |=|  .-'`,
+	`  (   '-|=|-'   )`,
+	`   '-.__\_/__.-'`,
+}
+
 // InboxNote is the day's note for an empty Inbox (G6.12).
 func InboxNote(today task.Date) string { return dailyPick(inboxNotes, today) }
 

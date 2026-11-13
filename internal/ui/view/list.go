@@ -52,6 +52,8 @@ type Spec struct {
 	// EmptyNote, if set, adds a muted line below the empty message, picked
 	// for the day (Inbox, G6.12).
 	EmptyNote func(today task.Date) string
+	// EmptyArt, if set, is drawn below EmptyNote when it fits (Inbox, G6.15).
+	EmptyArt []string
 	// DoneNote, if set, replaces the status bar summary once every listed
 	// task is done, picked for the day (Today, G6.14).
 	DoneNote func(today task.Date) string
@@ -77,7 +79,7 @@ func SpecFor(k Kind) Spec {
 			Badge:   dueDateBadge, // G6.11: standard rows, not the one-line design
 			Cycle:   task.DefaultCycle,
 			Summary: inboxSummary,
-			Empty:   "Inbox is empty.", EmptyHint: true, EmptyNote: InboxNote,
+			Empty:   "Inbox is empty.", EmptyHint: true, EmptyNote: InboxNote, EmptyArt: MothArt,
 		}
 	case Upcoming:
 		return Spec{
@@ -429,6 +431,11 @@ func (l *List) Body(t theme.Theme, width int, projects map[task.ID]string, now t
 		if l.Spec.EmptyNote != nil && l.height > 3 {
 			note := l.Spec.EmptyNote(task.DateOf(now))
 			lines[3] = w.Blank(base, w.MarkerWidth) + muted.Render(w.Truncate(t, note, bw-w.MarkerWidth))
+		}
+		if art := l.Spec.EmptyArt; len(art) > 0 && l.height >= 5+len(art) {
+			for i, a := range art {
+				lines[5+i] = w.Blank(base, w.MarkerWidth) + muted.Render(w.Truncate(t, a, bw-w.MarkerWidth))
+			}
 		}
 	}
 	for _, b := range l.blocks {

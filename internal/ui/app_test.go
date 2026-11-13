@@ -432,6 +432,12 @@ func TestEmptyStatesAndBigTerminal(t *testing.T) {
 	if !strings.Contains(screen(a)[4], note) {
 		t.Errorf("note row = %q, want %q", screen(a)[4], note)
 	}
+	// G6.15: the moth sits one blank line below the note.
+	for i, art := range view.MothArt {
+		if !strings.Contains(screen(a)[6+i], "  "+art) {
+			t.Errorf("art row %d = %q, want %q", i, screen(a)[6+i], art)
+		}
+	}
 	assertScreen(t, a, 120, 40)
 }
 
