@@ -273,6 +273,25 @@ func TestInboxShowsDatesAndDuration(t *testing.T) {
 	}
 }
 
+// G7.8: completing a task selects the next open task below it.
+func TestCompletingSelectsNextOpenTask(t *testing.T) {
+	clk := &clock{}
+	a := newApp(t, designStore(t, clk), clk, 80, 24)
+	press(a, "j") // Pack Azalea's books (P2)
+	press(a, "space")
+	if got := selectedName(a); got != "Practice meditating" {
+		t.Errorf("selected %q, want the next open task below", got)
+	}
+	press(a, "space", "space") // Practice, then Get eggs: nothing open below it
+	if got := selectedName(a); got != "File insurance reimbursements" {
+		t.Errorf("selected %q, want the nearest open task above", got)
+	}
+	press(a, "space") // the last open task: the selection stays on it
+	if sel, _ := a.current.Selected(); sel.Name != "File insurance reimbursements" || !sel.Done() {
+		t.Errorf("selected %q (done=%v) with every task done", sel.Name, sel.Done())
+	}
+}
+
 func selectedName(a *App) string {
 	t, _ := a.current.Selected()
 	return t.Name
@@ -351,11 +370,10 @@ func TestToggleDoneKeepsSelectionAndLingers(t *testing.T) {
 		t.Fatalf("selected %q", selectedName(a))
 	}
 	press(a, "space")
-	// Completed tasks sort last (G3.3c) and stay listed today (G3.1); the
-	// selection follows the task.
-	sel, _ := a.current.Selected()
-	if sel.Name != "Get eggs" || !sel.Done() {
-		t.Errorf("after space: selected %q done=%v", sel.Name, sel.Done())
+	// No open task below Get eggs, so the selection moves to the nearest
+	// open one above (G7.8). The completed task stays listed today (G3.1).
+	if sel, _ := a.current.Selected(); sel.Name != "Practice meditating" {
+		t.Errorf("after space: selected %q, want the nearest open task above", sel.Name)
 	}
 	// Completed group, by priority then A–Z: Finish… (P3), Get eggs (P3), Watch… (P4).
 	rows := a.current.Rows()
@@ -365,8 +383,9 @@ func TestToggleDoneKeepsSelectionAndLingers(t *testing.T) {
 	if !strings.Contains(screen(a)[21], "3/6 tasks") {
 		t.Errorf("summary = %q", screen(a)[21])
 	}
-	press(a, "space") // reopen
-	if sel, _ := a.current.Selected(); sel.Done() || a.current.Rows()[3].Name != "Get eggs" {
+	press(a, "end", "k", "space") // reopen Get eggs: the selection stays on it
+	sel, _ := a.current.Selected()
+	if sel.Name != "Get eggs" || sel.Done() || a.current.Rows()[3].Name != "Get eggs" {
 		t.Errorf("reopen failed: %+v", sel)
 	}
 	got, _ := s.GetTask(context.Background(), sel.ID)

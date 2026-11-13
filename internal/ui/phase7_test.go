@@ -1,10 +1,12 @@
 package ui
 
 import (
+	"context"
 	"slices"
 	"strings"
 	"testing"
 
+	"github.com/azntaiji/taskmoth/internal/task"
 	"github.com/azntaiji/taskmoth/internal/ui/theme"
 	"github.com/azntaiji/taskmoth/internal/ui/view"
 )
@@ -197,5 +199,90 @@ func TestHintsMatchKeyMap(t *testing.T) {
 		if _, ok := lookup(k, gotoGroup); !ok {
 			t.Errorf("g %s missing from Goto Lists", k)
 		}
+	}
+}
+
+// G7.5: a project's own list leaves #project off the second line.
+func TestProjectRowsOmitProjectName(t *testing.T) {
+	clk := &clock{}
+	a := newApp(t, designStore(t, clk), clk, 80, 24)
+	openProject(t, a, "oneofftasks")
+	body := strings.Join(screen(a)[1:21], "\n")
+	if strings.Contains(body, "#oneofftasks") {
+		t.Error("project rows repeat the project name")
+	}
+	if !strings.Contains(body, "~2h  s:") {
+		t.Error("the rest of the second line should stay")
+	}
+	press(a, "g", "a")
+	if !strings.Contains(strings.Join(screen(a), "\n"), "#oneofftasks") {
+		t.Error("other views still show the project")
+	}
+}
+
+// G7.7: from a project's list, Add Task's help names that project.
+func TestAddTaskHelpNamesDefaultProject(t *testing.T) {
+	clk := &clock{}
+	a := newApp(t, designStore(t, clk), clk, 80, 24)
+	press(a, "q")
+	if text := strings.Join(screen(a), " "); !strings.Contains(text, "sent to the Inbox") {
+		t.Error("from Today, tasks go to the Inbox")
+	}
+	press(a, "esc")
+	openProject(t, a, "groceries")
+	press(a, "q")
+	text := strings.Join(screen(a), " ")
+	if strings.Contains(text, "Inbox") || !strings.Contains(text, "#groceries.") {
+		t.Errorf("help should name #groceries:\n%s", strings.Join(screen(a), "\n"))
+	}
+}
+
+// G7.6: Someday (g s) lists open tasks with no due date.
+func TestSomedayView(t *testing.T) {
+	clk := &clock{}
+	s := designStore(t, clk)
+	a := newApp(t, s, clk, 80, 24)
+	press(a, "g", "s")
+	assertScreen(t, a, 80, 24)
+	if !strings.HasPrefix(screen(a)[0], "taskmoth ▸ Someday") {
+		t.Errorf("header = %q", screen(a)[0])
+	}
+	if len(a.current.Rows()) == 0 {
+		t.Fatal("the design data has undated tasks")
+	}
+	for _, r := range a.current.Rows() {
+		if !r.Due.IsZero() || r.Archived() {
+			t.Errorf("%q doesn't belong in Someday", r.Name)
+		}
+	}
+	if !strings.Contains(screen(a)[21], "s:priority") {
+		t.Error("Someday sorts like the other views")
+	}
+}
+
+// G7.9: empty Someday and project lists show their own note and the moth.
+func TestEmptySomedayAndProjectNotes(t *testing.T) {
+	clk := &clock{t: designNow}
+	s := projectStore(t, clk) // every task has a due date, so Someday is empty
+	if _, err := s.CreateProject(context.Background(), "chores"); err != nil {
+		t.Fatal(err)
+	}
+	a := newApp(t, s, clk, 80, 24)
+	today := task.DateOf(designNow)
+
+	press(a, "g", "s")
+	assertScreen(t, a, 80, 24)
+	if !strings.Contains(screen(a)[4], view.SomedayNote(today)) || !strings.Contains(screen(a)[6], view.MothArt[0]) {
+		t.Errorf("empty Someday:\n%s", strings.Join(screen(a)[:12], "\n"))
+	}
+
+	openProject(t, a, "chores")
+	assertScreen(t, a, 80, 24)
+	if !strings.Contains(screen(a)[2], "#chores has no open tasks.") ||
+		!strings.Contains(screen(a)[4], view.ProjectNote("chores", today)) || !strings.Contains(screen(a)[6], view.MothArt[0]) {
+		t.Errorf("empty project:\n%s", strings.Join(screen(a)[:12], "\n"))
+	}
+	if view.ProjectNote("chores", today) == view.SomedayNote(today) || view.SomedayNote(today) == view.InboxNote(today) {
+		t.Error("each list has its own note")
 	}
 }

@@ -1,6 +1,7 @@
 package view
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -64,8 +65,24 @@ func TestInboxNote(t *testing.T) {
 			t.Errorf("Today note too long for the status bar: %q", n)
 		}
 	}
-	for _, n := range inboxNotes {
-		if len(n) > 60 {
+	// G7.9: Inbox, Someday and projects each have their own lines.
+	owner := map[string]string{}
+	for name, pool := range map[string][]string{"inbox": inboxNotes, "someday": somedayNotes, "project": projectNotes} {
+		if len(pool) < 10 {
+			t.Errorf("%s has only %d notes", name, len(pool))
+		}
+		for _, n := range pool {
+			if o, dup := owner[n]; dup {
+				t.Errorf("%q is in both %s and %s", n, o, name)
+			}
+			owner[n] = name
+		}
+	}
+	if n := ProjectNote("work", day); strings.Contains(n, "%") {
+		t.Errorf("ProjectNote left a verb: %q", n)
+	}
+	for _, n := range append(append(inboxNotes, somedayNotes...), projectNotes...) {
+		if len(strings.ReplaceAll(n, "%s", "homelab-tech")) > 70 {
 			t.Errorf("note too long for 80 columns: %q", n)
 		}
 	}

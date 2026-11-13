@@ -78,6 +78,7 @@ var (
 				return nil
 			}},
 		gotoView("o", view.Overdue, "overdue"), gotoView("a", view.All, "all"),
+		gotoView("s", view.Someday, "someday"),
 		gotoView("c", view.Completed, "completed"), gotoView("x", view.Archive, "archive"),
 	}}
 

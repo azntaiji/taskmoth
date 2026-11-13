@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -20,7 +21,7 @@ import (
 // Goto Project).
 var fixedViews = map[string]view.Kind{
 	"t": view.Today, "i": view.Inbox, "u": view.Upcoming, "o": view.Overdue,
-	"a": view.All, "c": view.Completed, "x": view.Archive,
+	"a": view.All, "c": view.Completed, "x": view.Archive, "s": view.Someday,
 }
 
 // App is the root model: it owns the store, the list views, the clock, the
@@ -384,7 +385,27 @@ func (a *App) toggleDone() tea.Cmd {
 	if !ok {
 		return nil
 	}
+	if !t.Done() {
+		a.selectTaskAfterLoad = nextOpen(a.current.Rows(), t.ID) // G7.8
+	}
 	return a.setDone(t)
+}
+
+// nextOpen is the open task to select after completing id: the first open
+// one below it, else the nearest open one above, else id itself (G7.8).
+func nextOpen(rows []task.Task, id task.ID) task.ID {
+	i := slices.IndexFunc(rows, func(t task.Task) bool { return t.ID == id })
+	for j := i + 1; j < len(rows); j++ {
+		if !rows[j].Done() {
+			return rows[j].ID
+		}
+	}
+	for j := i - 1; j >= 0; j-- {
+		if !rows[j].Done() {
+			return rows[j].ID
+		}
+	}
+	return id
 }
 
 // setDone completes an open task or reopens a completed one.

@@ -1,7 +1,7 @@
 taskmoth ▸ #oneofftasks                                tues · 2026-11-10 · 15:26
                                                                                │
 ▶ [ ]  P1  Pay credit card balances                                2026-11-10  │
-           #oneofftasks  ~30m  s:2026-11-10                                    │
+           ~30m  s:2026-11-10                                                  │
           ┌─ Goto Project ───────────────────────────────────────────┐         │
   [ ]  P2 │                                                         ││6-11-20  │
           │ Select a project to open its list:                      ││         │

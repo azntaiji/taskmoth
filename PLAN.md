@@ -272,7 +272,7 @@ Principles:
 
 **Tests:** search matching tests; goldens for `40:16937` and `40:15079`; key-map/hint consistency test.
 
-**Exit:** full walkthrough of every screen in §3 against Figma with the operator.
+**Exit:** full walkthrough of every screen in §3 against Figma with the operator. *Done 2026-11-13: approved, with G7.5–G7.8 added from the walkthrough.*
 
 ---
 
@@ -306,6 +306,8 @@ Not to be built now, but keep the door open:
 - **Task and project analytics** — completion rates, time per project, trends. Implication now: keep timestamps on tasks and prefer a queryable store.
 - **Recurring tasks** — e.g. `every monday`, `every 3 months`, Todoist's `every!` (repeat from completion). Implication now: quick add leaves recurring phrases in the name (G5.1e).
 - **Times of day** — due and start times (`tomorrow at 4pm`). Dates are date-only today (G2.1b), so this needs a schema change.
+- **Export** — CSV and JSON export of tasks and projects.
+- **Grouping options in lists** — group any list by due date, start date, priority, project, or duration buckets (Upcoming's day grouping, G4.1, is the first case).
 - **Theme support** — user-selectable colour themes (e.g. files in `~/.config/taskmoth/themes/` mapping Figma token names to colours), possibly including a light theme and a theme that follows the terminal's own ANSI palette. Implication now: every colour goes through `theme.Colors` (named after its Figma variable); views never construct colours. A terminal-palette theme can't use pre-blended dimming (G1.4) because its RGB values are unknown, so it would need the faint attribute instead.
 
 ---
@@ -403,6 +405,11 @@ Record every gate outcome here before proceeding.
 | G7.3a | **The Keyboard Shortcuts dialog (`?`) closes with `esc` or `?`**; other keys are ignored. A muted `esc close` hint line is added at the bottom. | 2026-11-13 | Not in the design. |
 | G7.3b | **The shortcuts dialog keeps the three designed columns, corrected:** `x` reads "archive"; Goto Lists gains `g x archive`; Within Lists gains `j / k`, `home / end` and `u unarchive`; a fourth column, General, lists `? shortcuts`, `esc back` and `ctrl+q quit`. It is generated from the same key map as the hint rows. | 2026-11-13 | |
 | G7.4 | **The search bar shows a key hint at its right end** that follows the focus: `enter results  esc exit search` while typing, and `esc edit query` in the results. Keys are bold in `key/key`; labels are the status bar text faded, since `key/label` is the status bar's own colour. | 2026-11-13 | Requested at the Phase 7 review; not in the design. |
+| G7.5 | **A project's own list leaves `#project` off each row's second line**, which shows just `~duration` and `s:start`. Other views still show it. | 2026-11-13 | Requested at the Phase 7 walkthrough. |
+| G7.6 | **New view: Someday (`g s`)**: every open task with no due date, in any project or the Inbox, with or without a start date, plus today's completions (G3.1). Standard rows with no badge; default sort priority, `s` cycles and is remembered; empty state "Every open task has a due date." with the `q` hint. It's listed under Goto Lists in the shortcuts dialog but not in the bottom hint row. | 2026-11-13 | Requested at the Phase 7 walkthrough. |
+| G7.7 | **Add Task's help text names the default project** when opened from a project's list: "…Tasks without a # project are added to #work." Elsewhere it still says they go to the Inbox. | 2026-11-13 | Requested at the Phase 7 walkthrough. |
+| G7.8 | **Completing a task in a list selects the next open task below it**, or failing that the nearest open task above; if none is open, the selection stays on the completed task. Reopening keeps the selection on the task. | 2026-11-13 | Requested at the Phase 7 walkthrough. Supersedes "the selection follows the task" for completion. |
+| G7.9 | **Empty Someday and project lists get the Inbox treatment** (G6.12, G6.15): a muted daily note one line below the empty message, then the ASCII moth. Each kind of list has its own set of ~20 original, mostly moth-themed notes (Inbox, Someday, projects; no line is shared), and project notes can name the project ("#chores is all clear. The moth approves."). | 2026-11-13 | Requested after the Phase 7 walkthrough. |
 | G8.1a | **Versioning**, pulled forward from G8.1: SemVer 2.0.0 released as git tags `vX.Y.Z`. The README shows a version badge from the latest tag. Until 1.0.0 the minor version tracks completed phases (first release `v0.5.0` = Phases 0–5) and fixes bump the patch. 1.0.0 is the Phase 8 release. | 2026-11-12 | The distribution parts of G8.1 are still open. |
 
 ---

@@ -1,7 +1,9 @@
 package view
 
 import (
+	"fmt"
 	"hash/fnv"
+	"strings"
 
 	"github.com/azntaiji/taskmoth/internal/task"
 )
@@ -28,6 +30,55 @@ var inboxNotes = []string{
 	"Clean slate. What's next?",
 	"All caught up. Drink some water.",
 	"Quiet in here. Savour it.",
+}
+
+// somedayNotes are shown under an empty Someday list (G7.9).
+var somedayNotes = []string{
+	"Everything has a due date. Very decisive.",
+	"No someday tasks. The moth lives in the now.",
+	"Nothing undated. The moth admires your planning.",
+	"Someday is empty. Today is looking good.",
+	"Every task has a date. The moth checked twice.",
+	"No loose ends floating around like moths.",
+	"Nothing for someday. Maybe take a nap today?",
+	"All scheduled. The moth has nothing to wonder about.",
+	"Someday has flown off like a moth at dawn.",
+	"No vague plans here. Just a moth and a lamp.",
+	"Nothing undated. Your calendar thanks you.",
+	"The moth looked for someday and found today.",
+	"Empty. Every task knows when it's due.",
+	"No drifting tasks. The moth approves.",
+	"Someday? Not today. Not any day, apparently.",
+	"Nothing waiting for a someday. Nice.",
+	"Every task is pinned down. Like a moth collection, but kinder.",
+	"No undated tasks. Very tidy wings.",
+	"All dated. The moth is mildly impressed.",
+	"Nothing here. Go enjoy a someday-free day.",
+}
+
+// projectNotes are shown under an empty project list (G7.9); %s is the
+// project's name.
+var projectNotes = []string{
+	"#%s is all clear. The moth approves.",
+	"Nothing left in #%s. Time to flutter elsewhere.",
+	"#%s: empty. The moth checked under the lamp.",
+	"All done in #%s. Rest your wings.",
+	"#%s has nothing to do. Enviable.",
+	"No open tasks in #%s. Moth-ivation achieved.",
+	"#%s is quiet. Just a moth and its thoughts.",
+	"Empty project, clear mind.",
+	"#%s is tidy. Not a moth-eaten task in sight.",
+	"Nothing open in #%s. Go find a nice lamp.",
+	"#%s: done and dusted.",
+	"The moth circled #%s twice and found nothing.",
+	"All clear in #%s. Put the kettle on.",
+	"#%s is empty. Mothing to see here.",
+	"No tasks in #%s. The moth is doing a little dance.",
+	"#%s: handled.",
+	"Nothing left in #%s. Future you says thanks.",
+	"#%s has flown the coop. Or the lamp.",
+	"Empty. The moth suggests a new project, or a nap.",
+	"#%s is clear. Well earned.",
 }
 
 // todayDoneNotes replace Today's status bar summary once every task in it
@@ -68,6 +119,18 @@ var MothArt = []string{
 
 // InboxNote is the day's note for an empty Inbox (G6.12).
 func InboxNote(today task.Date) string { return dailyPick(inboxNotes, today) }
+
+// SomedayNote is the day's note for an empty Someday list (G7.9).
+func SomedayNote(today task.Date) string { return dailyPick(somedayNotes, today) }
+
+// ProjectNote is the day's note for project name's empty list (G7.9).
+func ProjectNote(name string, today task.Date) string {
+	n := dailyPick(projectNotes, today)
+	if strings.Contains(n, "%s") {
+		return fmt.Sprintf(n, name)
+	}
+	return n
+}
 
 // TodayDoneNote is the day's note for a finished Today list (G6.14).
 func TodayDoneNote(today task.Date) string { return dailyPick(todayDoneNotes, today) }

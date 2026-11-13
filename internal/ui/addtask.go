@@ -16,10 +16,17 @@ import (
 	w "github.com/azntaiji/taskmoth/internal/ui/widget"
 )
 
-// addTaskHelp is the Add Task dialog's help text (Figma 40:16708).
+// addTaskHelp is the Add Task dialog's help text (Figma 40:16708). From a
+// project's list, the last sentence names that project instead (G7.7).
 const addTaskHelp = "Add a new task using natural language. Options: # to assign to a project, " +
-	"s: to set start date, @ to set due date, ~ to set duration, ! to set priority. " +
-	"Tasks without options are sent to the Inbox."
+	"s: to set start date, @ to set due date, ~ to set duration, ! to set priority. "
+
+func (d *addTaskDialog) helpText(a *App) string {
+	if name, ok := a.projects[d.defaultProject]; ok && d.defaultProject != "" {
+		return addTaskHelp + "Tasks without a # project are added to #" + name + "."
+	}
+	return addTaskHelp + "Tasks without options are sent to the Inbox."
+}
 
 const (
 	addTaskInputRows = 4 // Figma: a 96px input
@@ -233,7 +240,7 @@ func (d *addTaskDialog) view(a *App, t theme.Theme) string {
 	}
 
 	body := []string{""}
-	for _, l := range strings.Split(ansi.Wordwrap(addTaskHelp, bw, ""), "\n") {
+	for _, l := range strings.Split(ansi.Wordwrap(d.helpText(a), bw, ""), "\n") {
 		body = append(body, help(t, l))
 	}
 	body = append(body, "")

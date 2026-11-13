@@ -25,6 +25,7 @@ Implemented:
 - **List views**:
   - **Today**: due, overdue, or already started.
   - **Upcoming**: the next 7 days, grouped by day.
+  - **Someday**: open tasks with no due date.
   - **Overdue**, **Inbox**, **All**, **Completed**, the **Archive**, and one list per **project**.
 - **Rows and status**:
   - Two-line task rows with priority and due badges, duration and start date.
@@ -38,13 +39,14 @@ Implemented:
 - **Search** (`/`): matches words in any order across names, descriptions and project names, with `#project` and `!p1`–`!p4` filters. Results update as you type, best match first.
 - **Keyboard Shortcuts** dialog (`?`), generated from the same key map as the hint rows.
 - **Completed tasks stay visible** (dimmed) until the end of the day.
-- **A little personality**: an empty Inbox shows a moth and a daily note, and finishing everything in Today swaps the status bar for a (usually moth-related) pat on the back.
+- **A little personality**: an empty Inbox, Someday list or project shows a moth and a daily note (each with its own set), and finishing everything in Today swaps the status bar for a (usually moth-related) pat on the back.
 - **Local SQLite database** in `~/.local/share/taskmoth` (or `$XDG_DATA_HOME/taskmoth`) on macOS and Linux.
 - **Tasks** with a name, description, project, start date, due date, estimated duration and priority (P1–P4).
 - **Themed UI**: colours follow the Figma design's ANSI-palette tokens (Dracula by default). There is a Unicode/ASCII glyph switch.
 
 Planned (see [PLAN.md](PLAN.md)):
 
+- CSV/JSON export, and grouping options for lists (by date, priority, project or duration).
 - Recurring tasks, times of day, user themes, time tracking, analytics.
 
 ## Install
@@ -70,14 +72,14 @@ Quit with `ctrl+q` or `ctrl+c` (`q` is "add task"). Press `?` for every key.
 | `↑`/`↓`, `k`/`j` | move the selection |
 | `pgup`/`pgdn` | move by a page |
 | `home`/`end`, `g g`/`G` | jump to top/bottom |
-| `q` | add a task (quick add; see below) |
+| `q` | add a task (quick add; see below); from a project's list it goes to that project |
 | `e` | open the selected task (`esc` returns to the list) |
 | `n` `d` `v` `r` `t` `y` `p` | edit name, description, project, start date, due date, duration, priority |
-| `space` | complete / reopen the selected task |
+| `space` | complete (then select the next open task) / reopen the selected task |
 | `s` | cycle the sort (priority → due → start → duration → name) |
 | `x` | archive the selected task (in the Archive: delete forever) |
 | `u` | unarchive (in the Archive and in Goto Project) |
-| `g t` `g i` `g u` `g o` `g a` `g c` `g x` | Today, Inbox, Upcoming, Overdue, All, Completed, Archive |
+| `g t` `g i` `g u` `g o` `g s` `g a` `g c` `g x` | Today, Inbox, Upcoming, Overdue, Someday, All, Completed, Archive |
 | `g p` | Goto Project: `enter` open, `n` new project, `x` archive, `u` unarchive |
 | `/` | search (see below) |
 | `?` | keyboard shortcuts (`esc` or `?` closes) |

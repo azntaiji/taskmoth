@@ -22,6 +22,7 @@ const (
 	All
 	Completed
 	Archive
+	Someday
 	Project
 	Search
 )
@@ -51,9 +52,10 @@ type Spec struct {
 	Empty     string
 	EmptyHint bool
 	// EmptyNote, if set, adds a muted line below the empty message, picked
-	// for the day (Inbox, G6.12).
+	// for the day (Inbox G6.12; Someday and projects G7.9, each its own set).
 	EmptyNote func(today task.Date) string
-	// EmptyArt, if set, is drawn below EmptyNote when it fits (Inbox, G6.15).
+	// EmptyArt, if set, is drawn below EmptyNote when it fits (Inbox, G6.15;
+	// Someday and projects, G7.9).
 	EmptyArt []string
 	// DoneNote, if set, replaces the status bar summary once every listed
 	// task is done, picked for the day (Today, G6.14).
@@ -113,6 +115,14 @@ func SpecFor(k Kind) Spec {
 			},
 			Empty: "No completed tasks yet.",
 		}
+	case Someday:
+		return Spec{
+			Kind: Someday, Title: "Someday", Key: "someday", ShowSort: true,
+			Select: openView(func(t task.Task, _ task.Date) bool { return task.InSomeday(t) }),
+			Cycle:  task.DefaultCycle, Summary: openSummary,
+			Empty: "Every open task has a due date.", EmptyHint: true,
+			EmptyNote: SomedayNote, EmptyArt: MothArt,
+		}
 	case Archive:
 		return Spec{
 			Kind: Archive, Title: "Archive", Key: "archive", ShowSort: true,
@@ -163,6 +173,7 @@ func ProjectSpec(p task.Project) Spec {
 		Select: openView(func(t task.Task, _ task.Date) bool { return task.InProject(t, p.ID) }),
 		Badge:  dueDateBadge, Cycle: task.DefaultCycle, Summary: countSummary,
 		Empty: "#" + p.Name + " has no open tasks.", EmptyHint: true,
+		EmptyNote: func(today task.Date) string { return ProjectNote(p.Name, today) }, EmptyArt: MothArt,
 	}
 }
 
@@ -532,6 +543,9 @@ func (l *List) renderRow(t theme.Theme, width int, tk task.Task, selected bool, 
 
 	meta := t.Style(t.FadeOn(t.C.Text, bg), bg) // metadata at 50% opacity on the row
 	line2 := w.Blank(fill, w.Width(lead))
+	if l.Spec.Kind == Project {
+		projects = nil // G7.5: a project's own list doesn't repeat its name
+	}
 	for _, s := range metadata(tk, projects) {
 		line2 += meta.Render(" " + s + " ")
 	}

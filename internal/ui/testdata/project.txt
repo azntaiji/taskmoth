@@ -1,22 +1,22 @@
 taskmoth ▸ #oneofftasks                                tues · 2026-11-10 · 15:26
                                                                                │
 ▶ [ ]  P1  Pay credit card balances                                2026-11-10  │
-           #oneofftasks  ~30m  s:2026-11-10                                    │
+           ~30m  s:2026-11-10                                                  │
                                                                                │
   [ ]  P2  Move some PFML money to the taxes vault?                2026-11-20  │
-           #oneofftasks  ~15m                                                  │
+           ~15m                                                                │
                                                                                │
   [ ]  P2  Shave, clean CPAP, cut nails                            2026-11-07  │
-           #oneofftasks  ~1h  s:2026-11-07                                     │
+           ~1h  s:2026-11-07                                                   │
                                                                                │
   [ ]  P2  Water plants                                            2026-11-18  │
-           #oneofftasks  ~5m                                                   │
+           ~5m                                                                 │
                                                                                │
   [ ]  P3  Put out the garbage                                     2026-11-15  │
-           #oneofftasks  ~15m                                                  │
+           ~15m                                                                │
                                                                                │
   [ ]  P4  Get oliver a gift card                                  2026-11-14  │
-           #oneofftasks  ~45m  s:2026-11-10                                    │
+           ~45m  s:2026-11-10                                                  │
                                                                                │
                                                                                │
   #oneofftasks   6 tasks · ~2.83h total · ~2.83h remaining           s:priority 

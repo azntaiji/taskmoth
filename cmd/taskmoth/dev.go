@@ -49,7 +49,7 @@ func runSeed(ctx context.Context, w io.Writer, s store.Store, dataDir string, no
 }
 
 // listViews are the view names --list accepts (plus "project:<name>").
-var listViews = []string{"today", "upcoming", "overdue", "inbox", "all", "completed", "archive"}
+var listViews = []string{"today", "upcoming", "overdue", "inbox", "someday", "all", "completed", "archive"}
 
 func runList(ctx context.Context, w io.Writer, s store.Store, view string, now time.Time) error {
 	today := task.DateOf(now)
@@ -78,6 +78,8 @@ func runList(ctx context.Context, w io.Writer, s store.Store, view string, now t
 		keep = task.InInbox
 	case v == "all":
 		keep = task.InAll
+	case v == "someday":
+		keep = task.InSomeday
 	case v == "completed":
 		keep = task.InCompleted
 	case v == "archive":

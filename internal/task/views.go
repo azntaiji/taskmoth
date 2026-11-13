@@ -68,6 +68,9 @@ func InProject(t Task, p ID) bool { return open(t) && t.ProjectID == p }
 // InAll: every open task (decision G4.2).
 func InAll(t Task) bool { return open(t) }
 
+// InSomeday: open with no due date, whatever its start date (G7.6).
+func InSomeday(t Task) bool { return open(t) && t.Due.IsZero() }
+
 // InCompleted: completed and not archived (decision G4.2).
 func InCompleted(t Task) bool { return !t.Archived() && t.Done() }
 
