@@ -2,15 +2,18 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/azntaiji/taskmoth/internal/paths"
+	"github.com/azntaiji/taskmoth/internal/store"
 	"github.com/azntaiji/taskmoth/internal/ui"
 	"github.com/azntaiji/taskmoth/internal/ui/gallery"
 	"github.com/azntaiji/taskmoth/internal/ui/theme"
@@ -66,12 +69,25 @@ func run(o options) error {
 		return runDev(o, dirs.DataDir)
 	}
 
-	// The TUI starts using the store in Phase 3.
 	t := theme.New(o.ascii)
-	var model tea.Model = ui.NewApp(t)
 	if o.gallery {
-		model = gallery.New(t)
+		_, err = tea.NewProgram(gallery.New(t)).Run()
+		return err
 	}
-	_, err = tea.NewProgram(model).Run()
+	return runApp(t, dirs.DataDir)
+}
+
+// runApp opens the database and runs the TUI.
+func runApp(t theme.Theme, dataDir string) (err error) {
+	s, err := store.OpenDir(context.Background(), dataDir, store.Options{})
+	if err != nil {
+		return fmt.Errorf("opening database: %w", err)
+	}
+	defer func() {
+		if cerr := s.Close(); err == nil && cerr != nil {
+			err = fmt.Errorf("closing database: %w", cerr)
+		}
+	}()
+	_, err = tea.NewProgram(ui.NewApp(t, s, time.Now)).Run()
 	return err
 }

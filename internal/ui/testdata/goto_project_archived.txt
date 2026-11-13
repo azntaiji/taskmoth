@@ -1,0 +1,24 @@
+taskmoth ▸ Today                                       tues · 2026-11-10 · 15:26
+                                                                               │
+  Nothing due or started today.  q to add a task                               │
+                                                                               │
+          ┌─ Goto Project ───────────────────────────────────────────┐         │
+          │                                                         ││         │
+          │ Select a project to open its list:                      ││         │
+          │                                                         ││         │
+          │   #groceries                                            ││         │
+          │ ▶ #work                                                 ││         │
+          │   Archived                                              ││         │
+          │   #oneofftasks                                          ││         │
+          │                                                         ││         │
+          │                                                         ││         │
+          │                                                         ││         │
+          │                                                         ││         │
+          │                                                         ││         │
+          │ ↑ / ↓ select  enter select  esc cancel  n new  x archi  ││         │
+          └──────────────────────────────────────────────────────────┘         │
+                                                                               │
+                                                                               │
+  Today   Archived #oneofftasks.                                     s:priority 
+ q add  space done  e edit/view  x archive  s sort  ? shortcuts  / search       
+ g i inbox  g t today  g u upcoming  g p projects  g o overdue  g a all         

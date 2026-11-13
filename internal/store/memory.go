@@ -17,6 +17,7 @@ type Memory struct {
 	opts     Options
 	tasks    map[task.ID]task.Task
 	projects map[task.ID]task.Project
+	settings map[string]string
 }
 
 var _ Store = (*Memory)(nil)
@@ -27,6 +28,7 @@ func NewMemory(opts Options) *Memory {
 		opts:     opts.withDefaults(),
 		tasks:    map[task.ID]task.Task{},
 		projects: map[task.ID]task.Project{},
+		settings: map[string]string{},
 	}
 }
 
@@ -58,12 +60,17 @@ func (m *Memory) GetTask(_ context.Context, id task.ID) (task.Task, error) {
 	return t, nil
 }
 
+// checkProject reports ErrUnknownProject or ErrProjectArchived.
 func (m *Memory) checkProject(id task.ID) error {
 	if id == "" {
 		return nil
 	}
-	if _, ok := m.projects[id]; !ok {
+	p, ok := m.projects[id]
+	if !ok {
 		return ErrUnknownProject
+	}
+	if p.Archived() {
+		return ErrProjectArchived
 	}
 	return nil
 }
@@ -99,8 +106,10 @@ func (m *Memory) UpdateTask(_ context.Context, t task.Task) (task.Task, error) {
 	if !ok {
 		return task.Task{}, ErrNotFound
 	}
-	if err := m.checkProject(t.ProjectID); err != nil {
-		return task.Task{}, err
+	if t.ProjectID != cur.ProjectID {
+		if err := m.checkProject(t.ProjectID); err != nil {
+			return task.Task{}, err
+		}
 	}
 	cur.Name, cur.Description, cur.ProjectID, cur.Priority = t.Name, t.Description, t.ProjectID, t.Priority
 	cur.Start, cur.Due, cur.DurationMin = t.Start, t.Due, t.DurationMin
@@ -136,30 +145,41 @@ func (m *Memory) SetDone(_ context.Context, id task.ID, done bool) (task.Task, e
 	})
 }
 
-// Trash implements Store.
-func (m *Memory) Trash(_ context.Context, id task.ID) (task.Task, error) {
+// Archive implements Store.
+func (m *Memory) Archive(_ context.Context, id task.ID) (task.Task, error) {
 	return m.modify(id, func(t *task.Task, now time.Time) {
-		if t.DeletedAt.IsZero() {
-			t.DeletedAt = now
+		if t.ArchivedAt.IsZero() {
+			t.ArchivedAt = now
 		}
 	})
 }
 
-// Restore implements Store.
-func (m *Memory) Restore(_ context.Context, id task.ID) (task.Task, error) {
-	return m.modify(id, func(t *task.Task, _ time.Time) { t.DeletedAt = time.Time{} })
+// Unarchive implements Store.
+func (m *Memory) Unarchive(_ context.Context, id task.ID) (task.Task, error) {
+	m.mu.Lock()
+	inArchivedProject := false
+	if t, ok := m.tasks[id]; ok && t.ProjectID != "" {
+		inArchivedProject = m.projects[t.ProjectID].Archived()
+	}
+	m.mu.Unlock()
+	return m.modify(id, func(t *task.Task, _ time.Time) {
+		t.ArchivedAt = time.Time{}
+		if inArchivedProject { // G4.4a
+			t.ProjectID = ""
+		}
+	})
 }
 
-// Purge implements Store.
-func (m *Memory) Purge(_ context.Context, id task.ID) error {
+// DeleteForever implements Store.
+func (m *Memory) DeleteForever(_ context.Context, id task.ID) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	t, ok := m.tasks[id]
 	if !ok {
 		return ErrNotFound
 	}
-	if !t.Trashed() {
-		return ErrNotTrashed
+	if !t.Archived() {
+		return ErrNotArchived
 	}
 	delete(m.tasks, id)
 	return nil
@@ -211,6 +231,9 @@ func (m *Memory) CreateProject(_ context.Context, name string) (task.Project, er
 	defer m.mu.Unlock()
 	for _, p := range m.projects {
 		if p.Name == name {
+			if p.Archived() {
+				return task.Project{}, ErrArchivedProjectName
+			}
 			return task.Project{}, ErrDuplicateProject
 		}
 	}
@@ -224,18 +247,87 @@ func (m *Memory) CreateProject(_ context.Context, name string) (task.Project, er
 	return p, nil
 }
 
+// ArchiveProject implements Store.
+func (m *Memory) ArchiveProject(_ context.Context, id task.ID) (task.Project, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	p, ok := m.projects[id]
+	if !ok {
+		return task.Project{}, ErrNotFound
+	}
+	if p.Archived() {
+		return p, nil
+	}
+	now := m.now()
+	p.ArchivedAt, p.UpdatedAt = now, now
+	m.projects[id] = p
+	for tid, t := range m.tasks {
+		if t.ProjectID == id && !t.Archived() {
+			t.ArchivedAt, t.UpdatedAt = now, now
+			m.tasks[tid] = t
+		}
+	}
+	return p, nil
+}
+
+// UnarchiveProject implements Store.
+func (m *Memory) UnarchiveProject(_ context.Context, id task.ID) (task.Project, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	p, ok := m.projects[id]
+	if !ok {
+		return task.Project{}, ErrNotFound
+	}
+	if !p.Archived() {
+		return p, nil
+	}
+	now := m.now()
+	for tid, t := range m.tasks {
+		if t.ProjectID == id && t.ArchivedAt.Equal(p.ArchivedAt) {
+			t.ArchivedAt, t.UpdatedAt = time.Time{}, now
+			m.tasks[tid] = t
+		}
+	}
+	p.ArchivedAt, p.UpdatedAt = time.Time{}, now
+	m.projects[id] = p
+	return p, nil
+}
+
 // DeleteProject implements Store.
 func (m *Memory) DeleteProject(_ context.Context, id task.ID) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if _, ok := m.projects[id]; !ok {
+	p, ok := m.projects[id]
+	if !ok {
 		return ErrNotFound
 	}
-	for _, t := range m.tasks {
+	if !p.Archived() {
+		return ErrNotArchived
+	}
+	for tid, t := range m.tasks {
 		if t.ProjectID == id {
-			return ErrProjectInUse
+			delete(m.tasks, tid)
 		}
 	}
 	delete(m.projects, id)
+	return nil
+}
+
+// GetSetting implements Store.
+func (m *Memory) GetSetting(_ context.Context, key string) (string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	v, ok := m.settings[key]
+	if !ok {
+		return "", ErrNotFound
+	}
+	return v, nil
+}
+
+// SetSetting implements Store.
+func (m *Memory) SetSetting(_ context.Context, key, value string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.settings[key] = value
 	return nil
 }

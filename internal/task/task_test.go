@@ -107,8 +107,8 @@ func TestViews(t *testing.T) {
 		{"started today, due in 3 days (both lists)", Task{Start: today, Due: today.AddDays(3)}, true, true, false, true, false},
 		{"in a project", Task{ProjectID: "p", Due: today}, true, false, false, false, false},
 		{"completed", Task{Due: today, CompletedAt: done}, false, false, false, false, true},
-		{"trashed", Task{Due: today, DeletedAt: done}, false, false, false, false, false},
-		{"trashed and completed", Task{CompletedAt: done, DeletedAt: done}, false, false, false, false, false},
+		{"archived", Task{Due: today, ArchivedAt: done}, false, false, false, false, false},
+		{"archived and completed", Task{CompletedAt: done, ArchivedAt: done}, false, false, false, false, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -117,8 +117,8 @@ func TestViews(t *testing.T) {
 			if got != want {
 				t.Errorf("today/upcoming/overdue/inbox/completed = %v, want %v", got, want)
 			}
-			if InTrash(tt.task) != tt.task.Trashed() {
-				t.Error("InTrash")
+			if InArchive(tt.task) != tt.task.Archived() {
+				t.Error("InArchive")
 			}
 		})
 	}
@@ -202,5 +202,133 @@ func TestFilterKeepsOrder(t *testing.T) {
 	got := Filter(ts, InInbox)
 	if !eq(names(got), []string{"a", "c"}) {
 		t.Errorf("Filter = %v", names(got))
+	}
+}
+
+func TestSortCyclesAndParse(t *testing.T) {
+	walk := func(cycle []SortKey) []string {
+		k := cycle[0]
+		var seen []string
+		for range len(cycle) + 1 {
+			seen = append(seen, k.String())
+			k = Next(cycle, k)
+		}
+		return seen
+	}
+	if got := walk(DefaultCycle); !eq(got, []string{"priority", "due", "start", "duration", "name", "priority"}) {
+		t.Errorf("default cycle = %v", got)
+	}
+	if got := walk(CompletedCycle); !eq(got, []string{"completed", "priority", "due", "start", "duration", "name", "completed"}) {
+		t.Errorf("completed cycle = %v", got)
+	}
+	if got := walk(ArchiveCycle); got[0] != "archived" || got[1] != "priority" {
+		t.Errorf("archive cycle = %v", got)
+	}
+	if Next(DefaultCycle, SortArchived) != DefaultCycle[0] {
+		t.Error("a key not in the cycle should restart it")
+	}
+	for _, k := range []SortKey{SortName, SortStart, SortDue, SortPriority, SortDuration, SortCompleted, SortArchived} {
+		if got, ok := ParseSortKey(k.String()); !ok || got != k {
+			t.Errorf("ParseSortKey(%q) = %v, %v", k.String(), got, ok)
+		}
+	}
+	if _, ok := ParseSortKey("bogus"); ok {
+		t.Error("ParseSortKey(bogus) should fail")
+	}
+}
+
+func TestSortByCompletionAndArchive(t *testing.T) {
+	at := func(h int) time.Time { return time.Date(2026, 11, 10, h, 0, 0, 0, time.UTC) }
+	ts := []Task{
+		{ID: "1", Name: "old", CompletedAt: at(8), ArchivedAt: at(12)},
+		{ID: "2", Name: "new", CompletedAt: at(11), ArchivedAt: at(9)},
+		{ID: "3", Name: "open"}, // no completion: last
+	}
+	Sort(ts, SortCompleted)
+	if got := names(ts); !eq(got, []string{"new", "old", "open"}) {
+		t.Errorf("by completed = %v", got)
+	}
+	Sort(ts, SortArchived)
+	if got := names(ts); !eq(got, []string{"old", "new", "open"}) {
+		t.Errorf("by archived = %v", got)
+	}
+}
+
+func TestUpcomingDayAndAll(t *testing.T) {
+	tests := []struct {
+		name string
+		task Task
+		want string
+	}{
+		{"due in window wins", Task{Start: today.AddDays(1), Due: today.AddDays(3)}, "2026-11-13"},
+		{"start only", Task{Start: today.AddDays(2)}, "2026-11-12"},
+		{"due outside, start inside", Task{Start: today.AddDays(2), Due: today.AddDays(20)}, "2026-11-12"},
+		{"due today is not upcoming", Task{Due: today}, ""},
+		{"nothing in window", Task{Start: today.AddDays(-2), Due: today.AddDays(9)}, ""},
+	}
+	for _, tt := range tests {
+		d, ok := UpcomingDay(tt.task, today)
+		if got := d.String(); got != tt.want || ok != (tt.want != "") {
+			t.Errorf("%s: %q %v, want %q", tt.name, got, ok, tt.want)
+		}
+		if ok != InUpcoming(tt.task, today) {
+			t.Errorf("%s: UpcomingDay and InUpcoming disagree", tt.name)
+		}
+	}
+	done := time.Date(2026, 11, 10, 9, 0, 0, 0, time.UTC)
+	if !InAll(Task{ProjectID: "p"}) || InAll(Task{CompletedAt: done}) || InAll(Task{ArchivedAt: done}) {
+		t.Error("InAll should be open, unarchived tasks in any project")
+	}
+	if (Project{}).Archived() || !(Project{ArchivedAt: done}).Archived() {
+		t.Error("Project.Archived")
+	}
+}
+
+func TestSortPutsCompletedLast(t *testing.T) {
+	done := time.Date(2026, 11, 10, 9, 0, 0, 0, time.UTC)
+	ts := []Task{
+		{ID: "1", Name: "Finish creating", Priority: P3, CompletedAt: done},
+		{ID: "2", Name: "Watch", Priority: P4, CompletedAt: done},
+		{ID: "3", Name: "Get eggs", Priority: P3},
+		{ID: "4", Name: "Insurance", Priority: P1},
+		{ID: "5", Name: "Practice meditating", Priority: P2},
+		{ID: "6", Name: "Pack books", Priority: P2},
+	}
+	Sort(ts, SortPriority)
+	want := []string{"Insurance", "Pack books", "Practice meditating", "Get eggs", "Finish creating", "Watch"}
+	if got := names(ts); !eq(got, want) {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}
+
+func TestListedKeepsTodaysCompletions(t *testing.T) {
+	loc := time.FixedZone("UTC-8", -8*3600)
+	now := time.Date(2026, 11, 10, 15, 26, 0, 0, loc)
+	today := DateOf(now)
+	inToday := func(x Task) bool { return InToday(x, today) }
+
+	// 23:30 local on the 9th is 07:30 UTC on the 10th: must count as yesterday.
+	lateYesterday := time.Date(2026, 11, 10, 7, 30, 0, 0, time.UTC)
+	earlyToday := time.Date(2026, 11, 10, 9, 0, 0, 0, time.UTC) // 01:00 local on the 10th
+
+	tests := []struct {
+		name string
+		task Task
+		want bool
+	}{
+		{"open, due today", Task{Due: today}, true},
+		{"completed today, due today", Task{Due: today, CompletedAt: earlyToday}, true},
+		{"completed yesterday (local), due today", Task{Due: today, CompletedAt: lateYesterday}, false},
+		{"completed today, due next week", Task{Due: today.AddDays(7), CompletedAt: earlyToday}, false},
+		{"completed today, then archived", Task{Due: today, CompletedAt: earlyToday, ArchivedAt: earlyToday}, false},
+		{"open, no dates", Task{}, false},
+	}
+	for _, tt := range tests {
+		if got := Listed(tt.task, now, inToday); got != tt.want {
+			t.Errorf("%s: Listed = %v, want %v", tt.name, got, tt.want)
+		}
+	}
+	if !Listed(Task{CompletedAt: earlyToday}, now, InInbox) {
+		t.Error("an Inbox task completed today should stay listed in Inbox")
 	}
 }

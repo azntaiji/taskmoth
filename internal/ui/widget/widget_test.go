@@ -292,3 +292,23 @@ func TestScreenAndTooSmall(t *testing.T) {
 		t.Error("ascii too small should use x")
 	}
 }
+
+func TestButton(t *testing.T) {
+	if got := ansi.Strip(Button(uni, "cancel", ButtonDefault, true, false)); got != "[ cancel ]" {
+		t.Errorf("label = %q", got)
+	}
+	// Figma 10:614: the delete frame's 120px buttons are 10 cells.
+	if w := Width(Button(uni, "delete", ButtonDestructive, false, false)); w != 10 {
+		t.Errorf("width = %d", w)
+	}
+	var b strings.Builder
+	for _, tone := range []ButtonTone{ButtonDefault, ButtonDestructive, ButtonConfirm} {
+		for _, f := range []bool{true, false} {
+			for _, d := range []bool{false, true} {
+				b.WriteString(Button(uni, "x", tone, f, d) + " ")
+			}
+		}
+		b.WriteString("\n")
+	}
+	golden(t, "buttons", b.String())
+}

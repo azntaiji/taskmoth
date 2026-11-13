@@ -1,0 +1,24 @@
+taskmoth ▸ Inbox                                       tues · 2026-11-10 · 15:26
+                                                                               │
+▶ [ ]  Citizen sleeper                                                         │
+                                                                               │
+  [ ]  More graphic novels                                                     │
+                                                                               │
+  [ ]  Pacific drive                                                           │
+                                                                               │
+  [ ]  Sable                                                                   │
+                                                                               │
+  [ ]  Season a letter to the future                                           │
+                                                                               │
+  [ ]  Try Godot exercise                                                      │
+                                                                               │
+                                                                               │
+                                                                               │
+                                                                               │
+                                                                               │
+                                                                               │
+                                                                               │
+                                                                               │
+  Inbox   6 tasks to organize                                                   
+ q add  space done  e edit/view  x archive  s sort  ? shortcuts  / search       
+ g i inbox  g t today  g u upcoming  g p projects  g o overdue  g a all         

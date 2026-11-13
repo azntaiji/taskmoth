@@ -23,7 +23,10 @@ internal/task/       domain model, validation, view filters, sort orders (pure)
 internal/store/      Store interface; SQLite implementation + embedded migrations;
                      in-memory implementation for UI tests (both pass the same contract tests)
 internal/seed/       sample data from the designs (taskmoth --seed)
-internal/ui/         Bubble Tea models (root App in app.go)
+internal/ui/         root Bubble Tea model (app.go): store, clock, key chords, view switching;
+                     dialogs.go: dialog stack, Goto Project, Create New Project, confirmations
+internal/ui/view/    list views: one configurable List + a Spec per view (Today, Inbox, Upcoming,
+                     Overdue, All, Completed, Archive, projects); duration/clock/day formatting
 internal/ui/theme/   Figma colour tokens, the dimmed theme, glyph sets (Unicode/ASCII)
 internal/ui/widget/  widgets built from the Figma Components page (header, status bar,
                      key hints, badges, checkbox, marker, scrollbar, frame, input, overlay)

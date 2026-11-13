@@ -17,42 +17,59 @@ import (
 var (
 	ErrNotFound         = errors.New("not found")
 	ErrDuplicateProject = errors.New("a project with that name already exists")
-	ErrUnknownProject   = errors.New("project does not exist")
-	ErrProjectInUse     = errors.New("project still has tasks") // until G4.4 decides otherwise
-	ErrNotTrashed       = errors.New("task is not in the trash")
-	ErrNewerSchema      = errors.New("database was created by a newer taskmoth")
+	// ErrArchivedProjectName: the name belongs to an archived project (G4.4).
+	ErrArchivedProjectName = errors.New("an archived project has that name; unarchive it instead")
+	ErrUnknownProject      = errors.New("project does not exist")
+	ErrProjectArchived     = errors.New("project is archived")
+	ErrNotArchived         = errors.New("not archived") // permanent deletion needs it archived first (G4.8)
+	ErrNewerSchema         = errors.New("database was created by a newer taskmoth")
 )
 
 // Store is taskmoth's persistence API.
 type Store interface {
-	// ListTasks returns every task, including completed and trashed ones, in
+	// ListTasks returns every task, including completed and archived ones, in
 	// creation order. Views filter with the task package.
 	ListTasks(ctx context.Context) ([]task.Task, error)
 	GetTask(ctx context.Context, id task.ID) (task.Task, error)
 	// CreateTask assigns the ID and timestamps. Priority 0 means the default
-	// (P4); CompletedAt and DeletedAt are ignored.
+	// (P4); CompletedAt and ArchivedAt are ignored. The project, if any, must
+	// exist and not be archived.
 	CreateTask(ctx context.Context, t task.Task) (task.Task, error)
 	// UpdateTask saves the editable fields (name, description, project,
-	// priority, dates, duration). Completion and trash state are unchanged.
+	// priority, dates, duration). Completion and archive state are unchanged.
+	// A changed project must exist and not be archived.
 	UpdateTask(ctx context.Context, t task.Task) (task.Task, error)
 	// SetDone marks a task completed or open. Completing an already completed
 	// task keeps its original completion time.
 	SetDone(ctx context.Context, id task.ID, done bool) (task.Task, error)
-	// Trash moves a task to the trash; Restore takes it out.
-	Trash(ctx context.Context, id task.ID) (task.Task, error)
-	Restore(ctx context.Context, id task.ID) (task.Task, error)
-	// Purge permanently deletes a task. It must be in the trash.
-	Purge(ctx context.Context, id task.ID) error
+	// Archive archives a task (G4.4); archiving it again keeps the original
+	// time. Unarchive restores it; if its project is archived, the task moves
+	// to the Inbox (G4.4a).
+	Archive(ctx context.Context, id task.ID) (task.Task, error)
+	Unarchive(ctx context.Context, id task.ID) (task.Task, error)
+	// DeleteForever permanently deletes an archived task (G4.8).
+	DeleteForever(ctx context.Context, id task.ID) error
 
-	// ListProjects returns projects A–Z (decision G2.2).
+	// ListProjects returns every project, active and archived, A–Z (G2.2).
 	ListProjects(ctx context.Context) ([]task.Project, error)
 	GetProject(ctx context.Context, id task.ID) (task.Project, error)
 	ProjectByName(ctx context.Context, name string) (task.Project, error)
 	// CreateProject normalizes and validates the name ("#Work" → "work").
 	CreateProject(ctx context.Context, name string) (task.Project, error)
-	// DeleteProject fails with ErrProjectInUse while any task, including
-	// completed and trashed ones, belongs to it.
+	// ArchiveProject archives a project and every unarchived task in it, all
+	// with the same timestamp (G4.4).
+	ArchiveProject(ctx context.Context, id task.ID) (task.Project, error)
+	// UnarchiveProject restores a project and the tasks archived with it,
+	// i.e. those whose archive time equals the project's (G4.4).
+	UnarchiveProject(ctx context.Context, id task.ID) (task.Project, error)
+	// DeleteProject permanently deletes an archived project and all of its
+	// tasks (G4.8).
 	DeleteProject(ctx context.Context, id task.ID) error
+
+	// GetSetting returns a stored setting, or ErrNotFound.
+	GetSetting(ctx context.Context, key string) (string, error)
+	// SetSetting stores a setting, replacing any previous value.
+	SetSetting(ctx context.Context, key, value string) error
 
 	Close() error
 }
@@ -87,6 +104,6 @@ func prepareNew(t task.Task) (task.Task, error) {
 	if t.Priority == 0 {
 		t.Priority = task.DefaultPriority
 	}
-	t.CompletedAt, t.DeletedAt = time.Time{}, time.Time{}
+	t.CompletedAt, t.ArchivedAt = time.Time{}, time.Time{}
 	return t, t.Validate()
 }

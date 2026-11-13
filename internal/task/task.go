@@ -38,22 +38,27 @@ type Task struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	CompletedAt time.Time // zero = open (G2.3)
-	DeletedAt   time.Time // zero = not in the trash (G2.3)
+	ArchivedAt  time.Time // zero = not archived (G4.4)
 }
 
 // Done reports whether the task is completed.
 func (t Task) Done() bool { return !t.CompletedAt.IsZero() }
 
-// Trashed reports whether the task is in the trash.
-func (t Task) Trashed() bool { return !t.DeletedAt.IsZero() }
+// Archived reports whether the task is archived (decision G4.4).
+func (t Task) Archived() bool { return !t.ArchivedAt.IsZero() }
 
 // Project groups tasks. Names are lowercase slugs shown as #name (G2.2).
+// Archiving a project archives its tasks with the same timestamp (G4.4).
 type Project struct {
-	ID        ID
-	Name      string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID         ID
+	Name       string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	ArchivedAt time.Time // zero = active
 }
+
+// Archived reports whether the project is archived.
+func (p Project) Archived() bool { return !p.ArchivedAt.IsZero() }
 
 // ErrInvalid wraps every validation failure.
 var ErrInvalid = errors.New("invalid")

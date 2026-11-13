@@ -2,9 +2,11 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -59,9 +61,11 @@ func TestContract(t *testing.T) {
 	for name, open := range implementations() {
 		t.Run(name, func(t *testing.T) {
 			t.Run("tasks", func(t *testing.T) { testTasks(t, open) })
-			t.Run("completion and trash", func(t *testing.T) { testLifecycle(t, open) })
+			t.Run("completion and archive", func(t *testing.T) { testLifecycle(t, open) })
 			t.Run("projects", func(t *testing.T) { testProjects(t, open) })
+			t.Run("project archive", func(t *testing.T) { testProjectArchive(t, open) })
 			t.Run("errors", func(t *testing.T) { testErrors(t, open) })
+			t.Run("settings", func(t *testing.T) { testSettings(t, open) })
 		})
 	}
 }
@@ -156,29 +160,36 @@ func testLifecycle(t *testing.T, open factory) {
 		t.Error("SetDone(false) should reopen")
 	}
 
-	if err := s.Purge(ctx, tk.ID); !errors.Is(err, ErrNotTrashed) {
-		t.Errorf("Purge of untrashed task: %v", err)
+	if err := s.DeleteForever(ctx, tk.ID); !errors.Is(err, ErrNotArchived) {
+		t.Errorf("deleting an unarchived task: %v", err)
 	}
-	if tk, err = s.Trash(ctx, tk.ID); err != nil || !tk.Trashed() {
-		t.Fatalf("Trash: %v", err)
+	clk.Advance(time.Minute)
+	archivedAt := clk.Now()
+	if tk, err = s.Archive(ctx, tk.ID); err != nil || !tk.ArchivedAt.Equal(archivedAt) {
+		t.Fatalf("Archive: %v %v", tk.ArchivedAt, err)
 	}
-	if tk, err = s.Restore(ctx, tk.ID); err != nil || tk.Trashed() {
-		t.Fatalf("Restore: %v", err)
+	clk.Advance(time.Minute)
+	if tk, _ = s.Archive(ctx, tk.ID); !tk.ArchivedAt.Equal(archivedAt) {
+		t.Error("archiving again should keep the original time")
 	}
-	if _, err = s.Trash(ctx, tk.ID); err != nil {
+	if tk, err = s.Unarchive(ctx, tk.ID); err != nil || tk.Archived() {
+		t.Fatalf("Unarchive: %v", err)
+	}
+	if _, err = s.Archive(ctx, tk.ID); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Purge(ctx, tk.ID); err != nil {
-		t.Fatalf("Purge: %v", err)
+	if err := s.DeleteForever(ctx, tk.ID); err != nil {
+		t.Fatalf("DeleteForever: %v", err)
 	}
 	if _, err := s.GetTask(ctx, tk.ID); !errors.Is(err, ErrNotFound) {
-		t.Errorf("purged task still found: %v", err)
+		t.Errorf("deleted task still found: %v", err)
 	}
 }
 
 func testProjects(t *testing.T, open factory) {
 	ctx := context.Background()
-	s := open(t, Options{})
+	clk := newClock()
+	s := open(t, Options{Now: clk.Now})
 	for _, n := range []string{"work", "#Groceries", "homelab-tech"} {
 		if _, err := s.CreateProject(ctx, n); err != nil {
 			t.Fatalf("%s: %v", n, err)
@@ -197,32 +208,106 @@ func testProjects(t *testing.T, open factory) {
 	}
 
 	g, err := s.ProjectByName(ctx, "#GROCERIES")
-	if err != nil || g.Name != "groceries" {
+	if err != nil || g.Name != "groceries" || g.Archived() {
 		t.Fatalf("ProjectByName: %+v %v", g, err)
 	}
 	if got, err := s.GetProject(ctx, g.ID); err != nil || got != g {
 		t.Errorf("GetProject: %+v %v", got, err)
 	}
+	if err := s.DeleteProject(ctx, g.ID); !errors.Is(err, ErrNotArchived) {
+		t.Errorf("deleting an active project: %v", err)
+	}
+}
 
-	tk, _ := s.CreateTask(ctx, task.Task{Name: "eggs", ProjectID: g.ID})
-	if err := s.DeleteProject(ctx, g.ID); !errors.Is(err, ErrProjectInUse) {
-		t.Errorf("deleting a project with tasks: %v", err)
+// testProjectArchive covers G4.4, G4.4a and G4.8.
+func testProjectArchive(t *testing.T, open factory) {
+	ctx := context.Background()
+	clk := newClock()
+	s := open(t, Options{Now: clk.Now})
+	w, _ := s.CreateProject(ctx, "work")
+	mk := func(name string) task.Task {
+		t.Helper()
+		tk, err := s.CreateTask(ctx, task.Task{Name: name, ProjectID: w.ID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return tk
 	}
-	// Trashed tasks still block deletion (they can be restored).
-	if _, err := s.Trash(ctx, tk.ID); err != nil {
+	earlier, openTask, doneTask := mk("archived earlier"), mk("open"), mk("done")
+	if _, err := s.SetDone(ctx, doneTask.ID, true); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.DeleteProject(ctx, g.ID); !errors.Is(err, ErrProjectInUse) {
-		t.Errorf("deleting a project with trashed tasks: %v", err)
-	}
-	if err := s.Purge(ctx, tk.ID); err != nil {
+	clk.Advance(time.Minute)
+	if _, err := s.Archive(ctx, earlier.ID); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.DeleteProject(ctx, g.ID); err != nil {
-		t.Errorf("deleting an empty project: %v", err)
+
+	clk.Advance(time.Minute)
+	w, err := s.ArchiveProject(ctx, w.ID)
+	if err != nil || !w.ArchivedAt.Equal(clk.Now()) {
+		t.Fatalf("ArchiveProject: %+v %v", w, err)
 	}
-	if _, err := s.GetProject(ctx, g.ID); !errors.Is(err, ErrNotFound) {
+	for _, id := range []task.ID{openTask.ID, doneTask.ID} {
+		if got, _ := s.GetTask(ctx, id); !got.ArchivedAt.Equal(w.ArchivedAt) {
+			t.Errorf("%s should be archived with the project", got.Name)
+		}
+	}
+	if got, _ := s.GetTask(ctx, earlier.ID); got.ArchivedAt.Equal(w.ArchivedAt) {
+		t.Error("an earlier archive time should be kept")
+	}
+
+	// Archived projects take no tasks and keep their name.
+	if _, err := s.CreateTask(ctx, task.Task{Name: "x", ProjectID: w.ID}); !errors.Is(err, ErrProjectArchived) {
+		t.Errorf("task into archived project: %v", err)
+	}
+	inbox, _ := s.CreateTask(ctx, task.Task{Name: "inbox task"})
+	inbox.ProjectID = w.ID
+	if _, err := s.UpdateTask(ctx, inbox); !errors.Is(err, ErrProjectArchived) {
+		t.Errorf("moving a task into an archived project: %v", err)
+	}
+	if _, err := s.CreateProject(ctx, "#Work"); !errors.Is(err, ErrArchivedProjectName) {
+		t.Errorf("reusing an archived name: %v", err)
+	}
+
+	// G4.4a: unarchiving one task while its project is archived → Inbox.
+	clk.Advance(time.Minute)
+	lone, err := s.Unarchive(ctx, openTask.ID)
+	if err != nil || lone.Archived() || lone.ProjectID != "" {
+		t.Errorf("lone unarchive: %+v %v", lone, err)
+	}
+
+	// Unarchiving the project restores the tasks archived with it only.
+	clk.Advance(time.Minute)
+	if w, err = s.UnarchiveProject(ctx, w.ID); err != nil || w.Archived() {
+		t.Fatalf("UnarchiveProject: %+v %v", w, err)
+	}
+	if got, _ := s.GetTask(ctx, doneTask.ID); got.Archived() || !got.Done() || got.ProjectID != w.ID {
+		t.Errorf("done task after project unarchive: %+v", got)
+	}
+	if got, _ := s.GetTask(ctx, earlier.ID); !got.Archived() {
+		t.Error("the task archived on its own should stay archived")
+	}
+
+	// G4.8: deleting an archived project removes it and its tasks forever.
+	if _, err := s.ArchiveProject(ctx, w.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.DeleteProject(ctx, w.ID); err != nil {
+		t.Fatalf("DeleteProject: %v", err)
+	}
+	if _, err := s.GetProject(ctx, w.ID); !errors.Is(err, ErrNotFound) {
 		t.Errorf("deleted project still found: %v", err)
+	}
+	for _, id := range []task.ID{earlier.ID, doneTask.ID} {
+		if _, err := s.GetTask(ctx, id); !errors.Is(err, ErrNotFound) {
+			t.Errorf("task of deleted project still found: %v", err)
+		}
+	}
+	if _, err := s.GetTask(ctx, openTask.ID); err != nil {
+		t.Error("the task moved to the Inbox must survive")
+	}
+	if _, err := s.CreateProject(ctx, "work"); err != nil {
+		t.Errorf("name should be free after permanent deletion: %v", err)
 	}
 }
 
@@ -246,8 +331,11 @@ func testErrors(t *testing.T, open factory) {
 		{"get missing task", second(s.GetTask(ctx, "nope")), ErrNotFound},
 		{"update missing task", second(s.UpdateTask(ctx, task.Task{ID: "nope", Name: "a", Priority: 1})), ErrNotFound},
 		{"complete missing task", second(s.SetDone(ctx, "nope", true)), ErrNotFound},
-		{"trash missing task", second(s.Trash(ctx, "nope")), ErrNotFound},
-		{"purge missing task", s.Purge(ctx, "nope"), ErrNotFound},
+		{"archive missing task", second(s.Archive(ctx, "nope")), ErrNotFound},
+		{"unarchive missing task", second(s.Unarchive(ctx, "nope")), ErrNotFound},
+		{"archive missing project", second(s.ArchiveProject(ctx, "nope")), ErrNotFound},
+		{"unarchive missing project", second(s.UnarchiveProject(ctx, "nope")), ErrNotFound},
+		{"delete missing task", s.DeleteForever(ctx, "nope"), ErrNotFound},
 		{"missing project by name", second(s.ProjectByName(ctx, "nope")), ErrNotFound},
 		{"delete missing project", s.DeleteProject(ctx, "nope"), ErrNotFound},
 	}
@@ -278,8 +366,8 @@ func TestSQLiteMigratesAndReopens(t *testing.T) {
 		t.Fatal(err)
 	}
 	v, err := s.SchemaVersion(ctx)
-	if err != nil || v != 1 {
-		t.Fatalf("schema version = %d, %v", v, err)
+	if err != nil || v != latestVersion(t) {
+		t.Fatalf("schema version = %d, %v; want %d", v, err, latestVersion(t))
 	}
 	p, _ := s.CreateProject(ctx, "work")
 	tk, err := s.CreateTask(ctx, task.Task{Name: "persist me", ProjectID: p.ID, Due: task.Date{Year: 2026, Month: 12, Day: 1}})
@@ -399,5 +487,102 @@ func TestNewIDIsSortableUUIDv7(t *testing.T) {
 	}
 	if a >= b {
 		t.Errorf("IDs should sort by creation time: %s >= %s", a, b)
+	}
+}
+
+func testSettings(t *testing.T, open factory) {
+	ctx := context.Background()
+	s := open(t, Options{})
+	if _, err := s.GetSetting(ctx, "sort.today"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("missing setting: %v", err)
+	}
+	if err := s.SetSetting(ctx, "sort.today", "due"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetSetting(ctx, "sort.today", "name"); err != nil { // overwrite
+		t.Fatal(err)
+	}
+	if v, err := s.GetSetting(ctx, "sort.today"); err != nil || v != "name" {
+		t.Errorf("GetSetting = %q, %v", v, err)
+	}
+	if _, err := s.GetSetting(ctx, "sort.inbox"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("other key should be unaffected: %v", err)
+	}
+}
+
+func latestVersion(t *testing.T) int {
+	t.Helper()
+	ms, err := migrations()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return len(ms)
+}
+
+// TestSQLiteUpgradesFromEveryVersion builds a database at each older schema
+// version, with a task in it, then opens it with the current code.
+func TestSQLiteUpgradesFromEveryVersion(t *testing.T) {
+	ctx := context.Background()
+	ms, err := migrations()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for from := 1; from < len(ms); from++ {
+		t.Run(fmt.Sprintf("from v%d", from), func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), FileName)
+			db, err := sql.Open("sqlite", path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, m := range ms[:from] {
+				if _, err := db.ExecContext(ctx, m.sql); err != nil {
+					t.Fatal(err)
+				}
+			}
+			now := "2026-11-10T15:26:00.000Z"
+			if _, err := db.ExecContext(ctx, fmt.Sprintf("PRAGMA user_version = %d", from)); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := db.ExecContext(ctx,
+				"INSERT INTO tasks (id, name, created_at, updated_at) VALUES ('old', 'survives', ?, ?)", now, now); err != nil {
+				t.Fatal(err)
+			}
+			if err := db.Close(); err != nil {
+				t.Fatal(err)
+			}
+
+			s, err := Open(ctx, path, Options{})
+			if err != nil {
+				t.Fatalf("upgrade from v%d: %v", from, err)
+			}
+			defer func() { _ = s.Close() }()
+			if v, _ := s.SchemaVersion(ctx); v != len(ms) {
+				t.Errorf("version after upgrade = %d", v)
+			}
+			if tk, err := s.GetTask(ctx, "old"); err != nil || tk.Name != "survives" {
+				t.Errorf("existing task after upgrade: %+v %v", tk, err)
+			}
+			assertNoStaleColumns(t, s)
+		})
+	}
+}
+
+// assertNoStaleColumns checks that renamed columns left no references
+// behind in tables or index definitions (migration 3 renamed deleted_at).
+func assertNoStaleColumns(t *testing.T, s *SQLite) {
+	t.Helper()
+	rows, err := s.db.Query("SELECT name, sql FROM sqlite_master WHERE sql IS NOT NULL")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var name, def string
+		if err := rows.Scan(&name, &def); err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(def, "deleted_at") {
+			t.Errorf("%s still references deleted_at:\n%s", name, def)
+		}
 	}
 }

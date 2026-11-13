@@ -1,0 +1,30 @@
+taskmoth ▸ Upcoming                                    tues · 2026-11-10 · 15:26
+                                                                               │
+  wed · 2026-11-11                                                             │
+                                                                               │
+▶ [ ]  P2  Quarterly review                                        2026-11-30  │
+           #work  s:2026-11-11                                                 │
+                                                                               │
+  thurs · 2026-11-12                                                           │
+                                                                               │
+  [ ]  P3  Get eggs                                                2026-11-12  │
+           #groceries  ~15m                                                    │
+                                                                               │
+  sat · 2026-11-14                                                             │
+                                                                               │
+  [ ]  P4  Get oliver a gift card                                  2026-11-14  │
+           #oneofftasks  ~45m  s:2026-11-10                                    │
+                                                                               │
+  sun · 2026-11-15                                                             │
+                                                                               │
+  [ ]  P3  Put out the garbage                                     2026-11-15  │
+           #oneofftasks  ~15m                                                  │
+                                                                               │
+                                                                               │
+                                                                               │
+                                                                               │
+                                                                               │
+                                                                               │
+  Upcoming   4/4 tasks · ~1.25h total · ~1.25h remaining             s:priority 
+ q add  space done  e edit/view  x archive  s sort  ? shortcuts  / search       
+ g i inbox  g t today  g u upcoming  g p projects  g o overdue  g a all         

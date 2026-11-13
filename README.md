@@ -7,25 +7,33 @@
 
 A keyboard-driven task manager for the terminal, built with [Bubble Tea](https://github.com/charmbracelet/bubbletea).
 
-> **Status: in development.** The design system, widgets, data model and SQLite storage are done (phases 0–2 of [PLAN.md](PLAN.md)). The task list views arrive in Phase 3. Until then, `taskmoth` opens a placeholder screen.
+> **Status: in development.** All the list views, projects and the archive work: you can browse, sort, complete, archive and organize tasks (phases 0–4 of [PLAN.md](PLAN.md)). Adding and editing tasks, and search, come in later phases. Until then, try it with the sample data (see *Developer flags*).
 
 ## Features
 
 Implemented:
 
+- **List views**:
+  - **Today**: due, overdue, or already started.
+  - **Upcoming**: the next 7 days, grouped by day.
+  - **Overdue**, **Inbox**, **All**, **Completed**, the **Archive**, and one list per **project**.
+- **Rows and status**:
+  - Two-line task rows with priority and due badges; the Inbox uses one-line rows.
+  - A live clock in the header.
+  - A status bar with task count, total and remaining time, and the current sort.
+- **Projects** named as `#slugs`:
+  - Pick one with `g p`, and create new ones there.
+  - Archiving a project archives its tasks too, and unarchiving brings them back.
+- **Archive instead of delete**: `x` archives a task, and `g x` shows the archive. Permanent deletion only happens from the archive, after a confirmation.
+- **Keyboard driven**: arrows or `j`/`k`, `space` to complete, `s` to sort (each view remembers its own sort), and `g` chords to switch views.
+- **Completed tasks stay visible** (dimmed) until the end of the day.
 - **Local SQLite database** in `~/.local/share/taskmoth` (or `$XDG_DATA_HOME/taskmoth`) on macOS and Linux.
 - **Tasks** with a name, description, project, start date, due date, estimated duration and priority (P1–P4).
-- **Projects** named as `#slugs`. Deleted tasks go to a **trash**.
-- **Smart lists**:
-  - **Today**: due, overdue, or already started.
-  - **Upcoming**: starting or due in the next 7 days.
-  - **Overdue**, **Inbox** and **Completed**.
-- **Sorting** by name, start date, due date, priority or duration.
 - **Themed UI**: colours follow the Figma design's ANSI-palette tokens (Dracula by default). There is a Unicode/ASCII glyph switch.
 
 Planned (see [PLAN.md](PLAN.md)):
 
-- The full list views, task editing dialogs, search, and a keyboard shortcuts overlay.
+- Adding and editing tasks, search, and a keyboard shortcuts overlay.
 - **Natural-language quick add**, e.g. `Change the laundry #chores @in 2 days ~30m !p2 s:tomorrow`.
 - Later: user themes, time tracking, analytics.
 
@@ -47,16 +55,20 @@ taskmoth --ascii            # ASCII symbols for minimal fonts/terminals (or TASK
 
 Quit with `ctrl+q` or `ctrl+c`. (`q` will be "add task".)
 
-Developer flags:
+| Key | Action |
+|---|---|
+| `↑`/`↓`, `k`/`j` | move the selection |
+| `pgup`/`pgdn` | move by a page |
+| `home`/`end`, `g g`/`G` | jump to top/bottom |
+| `space` | complete / reopen the selected task |
+| `s` | cycle the sort (priority → due → start → duration → name) |
+| `x` | archive the selected task (in the Archive: delete forever) |
+| `u` | unarchive (in the Archive and in Goto Project) |
+| `g t` `g i` `g u` `g o` `g a` `g c` `g x` | Today, Inbox, Upcoming, Overdue, All, Completed, Archive |
+| `g p` | Goto Project: `enter` open, `n` new project, `x` archive, `u` unarchive |
+| `esc` | cancel a pending `g` or close a dialog |
 
-```sh
-taskmoth --gallery                       # widget gallery for comparing with the Figma designs
-taskmoth --data /tmp/tm --seed           # load the sample data from the designs into an empty data dir
-taskmoth --data /tmp/tm --list today     # print a view: today, upcoming, overdue, inbox,
-                                         # completed, trash, or project:<name>
-```
-
-`--list` is temporary; it goes away once the list views exist.
+Dialogs use `←`/`→` to choose a button and `enter` to confirm. The bottom hint rows also show keys from the designs that later phases will make work (`q`, `e`, `?`, `/`).
 
 ## Development
 
@@ -79,6 +91,7 @@ cmd/taskmoth/        entry point and flags
 internal/task/       domain model, view filters, sorting (pure; no UI or storage)
 internal/store/      SQLite store, migrations, in-memory store for tests
 internal/seed/       sample data from the designs
+internal/ui/view/    list views (Today, Inbox, …)
 internal/ui/theme/   colour tokens (palette → semantic), dimmed theme, glyphs
 internal/ui/widget/  widgets built from the Figma Components page
 internal/ui/gallery/ developer gallery
