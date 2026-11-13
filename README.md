@@ -35,6 +35,8 @@ Implemented:
   - Archiving a project archives its tasks too, and unarchiving brings them back.
 - **Archive instead of delete**: `x` archives a task, and `g x` shows the archive. Permanent deletion only happens from the archive, after a confirmation.
 - **Keyboard driven**: arrows or `j`/`k`, `space` to complete, `s` to sort (each view remembers its own sort), and `g` chords to switch views.
+- **Search** (`/`): matches words in any order across names, descriptions and project names, with `#project` and `!p1`–`!p4` filters. Results update as you type, best match first.
+- **Keyboard Shortcuts** dialog (`?`), generated from the same key map as the hint rows.
 - **Completed tasks stay visible** (dimmed) until the end of the day.
 - **Local SQLite database** in `~/.local/share/taskmoth` (or `$XDG_DATA_HOME/taskmoth`) on macOS and Linux.
 - **Tasks** with a name, description, project, start date, due date, estimated duration and priority (P1–P4).
@@ -42,8 +44,7 @@ Implemented:
 
 Planned (see [PLAN.md](PLAN.md)):
 
-- Search and a keyboard shortcuts overlay.
-- Later: recurring tasks, times of day, user themes, time tracking, analytics.
+- Recurring tasks, times of day, user themes, time tracking, analytics.
 
 ## Install
 
@@ -61,7 +62,7 @@ taskmoth --data DIR         # use DIR for the database instead of the default
 taskmoth --ascii            # ASCII symbols for minimal fonts/terminals (or TASKMOTH_ASCII=1)
 ```
 
-Quit with `ctrl+q` or `ctrl+c`. (`q` will be "add task".)
+Quit with `ctrl+q` or `ctrl+c` (`q` is "add task"). Press `?` for every key.
 
 | Key | Action |
 |---|---|
@@ -77,9 +78,17 @@ Quit with `ctrl+q` or `ctrl+c`. (`q` will be "add task".)
 | `u` | unarchive (in the Archive and in Goto Project) |
 | `g t` `g i` `g u` `g o` `g a` `g c` `g x` | Today, Inbox, Upcoming, Overdue, All, Completed, Archive |
 | `g p` | Goto Project: `enter` open, `n` new project, `x` archive, `u` unarchive |
-| `esc` | cancel a pending `g` or close a dialog |
+| `/` | search (see below) |
+| `?` | keyboard shortcuts (`esc` or `?` closes) |
+| `esc` | cancel a pending `g`, close a dialog, or go back |
 
-Dialogs use `←`/`→` to choose a button and `enter` to confirm. In edit dialogs, an empty value clears the field (`no date` also clears a date), and Edit Project's "Inbox" entry removes the project. In Edit Description, `shift+enter` (where the terminal supports it), `alt+enter` or `ctrl+j` adds a line break. The bottom hint rows also show keys from the designs that a later phase will make work (`?`, `/`).
+Dialogs use `←`/`→` to choose a button and `enter` to confirm. In edit dialogs, an empty value clears the field (`no date` also clears a date), and Edit Project's "Inbox" entry removes the project. In Edit Description, `shift+enter` (where the terminal supports it), `alt+enter` or `ctrl+j` adds a line break.
+
+### Search
+
+`/` opens Search with the query input in the status bar. Every word must appear, in any order, in a task's name, description or project name; `#work` keeps tasks in projects starting with "work", `#inbox` keeps tasks with no project, and `!p1`–`!p4` filter by priority. Archived tasks aren't searched; completed ones are listed last.
+
+While typing, `↑`/`↓` move the selection. `enter` moves to the results, where the usual list keys work (`e`, `space`, `x`, `p`, …); `/` or `esc` returns to the input, and `esc` there goes back to the previous view. The last query is kept until you quit.
 
 ### Quick add
 

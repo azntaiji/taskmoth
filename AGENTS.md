@@ -29,7 +29,9 @@ internal/seed/       sample data from the designs (taskmoth --seed)
 internal/ui/         root Bubble Tea model (app.go): store, clock, key chords, view switching;
                      dialogs.go: dialog stack, Goto Project, Create New Project, confirmations;
                      addtask.go: Add Task (quick add, autocomplete, did-you-mean);
-                     taskview.go: Single Task view; edit.go: the field edit dialogs
+                     taskview.go: Single Task view; edit.go: the field edit dialogs;
+                     keymap.go: the key map (dispatch, hint rows and the shortcuts dialog all
+                     come from it); search.go: the Search view; shortcuts.go: Keyboard Shortcuts
 internal/ui/view/    list views: one configurable List + a Spec per view (Today, Inbox, Upcoming,
                      Overdue, All, Completed, Archive, projects); duration/clock/day formatting
 internal/ui/theme/   Figma colour tokens, the dimmed theme, glyph sets (Unicode/ASCII)
@@ -45,6 +47,7 @@ internal/ui/gallery/ dev gallery (taskmoth --gallery) for comparing widgets with
 - **Dimming:** draw the view behind a dialog with `theme.Dimmed()`, then composite it with `widget.Overlay`. A component's own "dim" variant (completed tasks, the header clock) uses `theme.Fade` / `FadeOn`.
 - **Widths are terminal cells, not bytes or runes.** One Figma cell is 12×24 px. Truncate plain text with `widget.Truncate` before styling it, and lay out with `Fit` / `Spread`.
 - **Every rendered line must be exactly the target width.** The golden tests assert this.
+- **Keys live in the key map** (`internal/ui/keymap.go`). Add a list key there, with its hint and shortcuts-dialog labels, rather than in a `switch`; hint rows are built with `hintFor`/`listHints`, and `TestHintsMatchKeyMap` checks them.
 - **The quick-add grammar is PLAN.md Appendix A.** `TestAppendixA` is that table row for row. Change the grammar only through a gate, and update the appendix and the test together.
 
 ## Data conventions

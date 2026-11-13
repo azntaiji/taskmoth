@@ -18,12 +18,33 @@ import (
 // selected in a list or open in the Single Task view (G6.6) and saves with
 // UpdateTask.
 
-// editKeys maps the "Selected Tasks" keys to the dialog they open (G6.6).
-var editKeys = map[string]func(a *App, t task.Task) dialog{
-	"n": newNameDialog, "d": newDescriptionDialog, "p": newPriorityDialog, "v": newEditProjectDialog,
-	"r": func(a *App, t task.Task) dialog { return newDateDialog(a, t, false) },
-	"t": func(a *App, t task.Task) dialog { return newDateDialog(a, t, true) },
-	"y": newDurationDialog,
+// editField is one of the "Selected Tasks" edit keys (G6.6): its key, its
+// short label and the dialog it opens. The key map and the Single Task view
+// both use this table.
+type editField struct {
+	key, short string
+	open       func(a *App, t task.Task) dialog
+}
+
+// editFields are in the shortcuts dialog's order (40:15079).
+var editFields = []editField{
+	{"p", "priority", newPriorityDialog},
+	{"v", "project", newEditProjectDialog},
+	{"r", "start date", func(a *App, t task.Task) dialog { return newDateDialog(a, t, false) }},
+	{"t", "due date", func(a *App, t task.Task) dialog { return newDateDialog(a, t, true) }},
+	{"y", "duration", newDurationDialog},
+	{"n", "name", newNameDialog},
+	{"d", "description", newDescriptionDialog},
+}
+
+// editFieldFor finds the edit field bound to key.
+func editFieldFor(key string) (editField, bool) {
+	for _, f := range editFields {
+		if f.key == key {
+			return f, true
+		}
+	}
+	return editField{}, false
 }
 
 // saveTask updates t. If the result has a start date after its due date,

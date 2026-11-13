@@ -1,0 +1,24 @@
+taskmoth ▸ Search                                      tues · 2026-11-10 · 15:26
+                                                                               │
+▶ [ ]  P1  File insurance reimbursements                                today  █
+           #oneofftasks  ~2h  s:2026-11-10                                     █
+                                                                               █
+  [ ]  P2  Pack Azalea's books in backpack                              today  █
+           #parenting  ~1h                                                     █
+                                                                               █
+  [ ]  P2  Practice meditating                                          today  █
+           #reminders  ~30m                                                    █
+                                                                               █
+  [ ]  P3  Get eggs                                                   overdue  █
+           #groceries  ~15m  s:2026-11-09                                      │
+                                                                               │
+  [ ]  P4  Citizen sleeper                                                     │
+                                                                               │
+                                                                               │
+  [ ]  P4  More graphic novels                                                 │
+                                                                               │
+                                                                               │
+  [ ]  P4  Pacific drive                                                       │
+  Search   >  search for a task...               enter results  esc exit search 
+ q add  space done  e edit/view  x archive  ? shortcuts  / search               
+ g i inbox  g t today  g u upcoming  g p projects  g o overdue  g a all         

@@ -23,6 +23,7 @@ const (
 	Completed
 	Archive
 	Project
+	Search
 )
 
 // Spec configures a list view. Every list view is the same List with a
@@ -57,8 +58,8 @@ type Spec struct {
 	// DoneNote, if set, replaces the status bar summary once every listed
 	// task is done, picked for the day (Today, G6.14).
 	DoneNote func(today task.Date) string
-	// Hints replaces the first key-hint row (Archive, G4.5a).
-	Hints []w.Hint
+	// Order, if set, replaces the sort (Search, G7.1d); s does nothing.
+	Order func(rows []task.Task)
 }
 
 // openView selects open tasks matching in, plus today's completions (G3.1).
@@ -121,8 +122,6 @@ func SpecFor(k Kind) Spec {
 				return fmt.Sprintf("%d archived", len(rows))
 			},
 			Empty: "The archive is empty.",
-			Hints: []w.Hint{{Key: "u", Label: "unarchive"}, {Key: "x", Label: "delete forever"},
-				{Key: "s", Label: "sort"}, {Key: "?", Label: "shortcuts"}, {Key: "/", Label: "search"}},
 		}
 	default:
 		return Spec{
@@ -131,6 +130,29 @@ func SpecFor(k Kind) Spec {
 			Cycle: task.DefaultCycle, Summary: openSummary,
 			Empty: "Nothing due or started today.", EmptyHint: true, DoneNote: TodayDoneNote,
 		}
+	}
+}
+
+// SearchSpec returns the Spec of the Search view (Figma 40:16937) for query
+// q: every task that isn't archived and matches (G7.1). project names a
+// task's project ("" for the Inbox).
+func SearchSpec(q task.Query, project func(task.ID) string) Spec {
+	hits := map[task.ID]bool{} // name hits, filled by Select for Order
+	return Spec{
+		Kind: Search, Title: "Search", Key: "search",
+		Select: func(t task.Task, _ time.Time) bool {
+			if t.Archived() {
+				return false
+			}
+			ok, inName := q.Match(t, project(t.ProjectID))
+			hits[t.ID] = inName
+			return ok
+		},
+		Order:   func(rows []task.Task) { task.SortSearch(rows, func(t task.Task) bool { return hits[t.ID] }) },
+		Badge:   dueWordBadge,
+		Cycle:   task.DefaultCycle,
+		Summary: countSummary,
+		Empty:   "No matching tasks.",
 	}
 }
 
@@ -275,13 +297,21 @@ func (l *List) SetSort(k task.SortKey) {
 }
 
 // NextSort steps the sort along the view's cycle and returns the new key.
+// Lists with their own Order (Search) don't sort.
 func (l *List) NextSort() task.SortKey {
+	if l.Spec.Order != nil {
+		return l.Sort
+	}
 	l.SetSort(task.Next(l.Spec.Cycle, l.Sort))
 	return l.Sort
 }
 
 func (l *List) order() {
-	task.Sort(l.rows, l.Sort)
+	if l.Spec.Order != nil {
+		l.Spec.Order(l.rows)
+	} else {
+		task.Sort(l.rows, l.Sort)
+	}
 	if l.Spec.Group != nil {
 		slices.SortStableFunc(l.rows, func(a, b task.Task) int {
 			da, _ := l.Spec.Group(a, l.today)

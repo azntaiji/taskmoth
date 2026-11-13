@@ -316,6 +316,13 @@ func (in *Input) View(t theme.Theme, field bool) string {
 	if field {
 		bg = t.C.BgInput
 	}
+	return in.ViewOn(t, bg, t.C.TextMuted)
+}
+
+// ViewOn renders the input on any background, with the placeholder in
+// placeholderFg (the Search bar, Figma 40:16937: statusbar/bg and
+// text/warning).
+func (in *Input) ViewOn(t theme.Theme, bg, placeholderFg color.Color) string {
 	fill := t.Style(t.C.Text, bg)
 	prompt := t.Style(t.C.TextAccent, bg).Render(">") + fill.Render(" ")
 	cursor := t.Style(t.C.Reverse.Fg, t.C.Reverse.Bg)
@@ -334,7 +341,7 @@ func (in *Input) View(t theme.Theme, field bool) string {
 			first += fill.Render(" ")
 		}
 		ph := Truncate(t, in.Placeholder, w-Width(first))
-		rows[0] = Fit(first+t.Style(t.C.TextMuted, bg).Render(ph), w, fill)
+		rows[0] = Fit(first+t.Style(placeholderFg, bg).Render(ph), w, fill)
 		for i := 1; i < len(rows); i++ {
 			rows[i] = Blank(fill, w)
 		}

@@ -1,0 +1,24 @@
+taskmoth ▸ Search                                      tues · 2026-11-10 · 15:26
+                                                                               │
+▶ [ ]  P4  Season a letter to the future                                       │
+                                                                               │
+                                                                               │
+  [x]  P3  Finish creating task management TUI app. Then put it int…  overdue  │
+           #homelab-tech  ~3.5h  s:2026-11-07                                  │
+                                                                               │
+  [x]  P4  Watch Tales of the Loop                                      today  │
+           #movies-tv  ~45m  s:2026-11-10                                      │
+                                                                               │
+                                                                               │
+                                                                               │
+                                                                               │
+                                                                               │
+                                                                               │
+                                                                               │
+                                                                               │
+                                                                               │
+                                                                               │
+                                                                               │
+  Search   > the                                 enter results  esc exit search 
+ q add  space done  e edit/view  x archive  ? shortcuts  / search               
+ g i inbox  g t today  g u upcoming  g p projects  g o overdue  g a all         

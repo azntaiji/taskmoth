@@ -49,6 +49,7 @@ type App struct {
 	keyDisambiguation   bool      // the terminal reports shift+enter apart from enter (G6.2)
 	pendingG            bool      // `g` pressed, waiting for the second key (G3.4: no timeout)
 	message             string    // notice or error in the status bar until the next key
+	search              *search   // the Search view, once opened (G7.2b keeps its query)
 }
 
 // NewApp returns the root model. now supplies the current time (injected so
@@ -145,6 +146,9 @@ func (a *App) allLists() []*view.List {
 	for _, l := range a.projectView {
 		out = append(out, l)
 	}
+	if a.search != nil {
+		out = append(out, a.search.list)
+	}
 	return out
 }
 
@@ -228,6 +232,9 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.PasteMsg:
 		if p, ok := a.topDialog().(interface{ paste(tea.PasteMsg) }); ok {
 			p.paste(msg)
+		} else if a.searching() && a.search.input.Focused() && a.taskView == nil {
+			a.search.input.Update(msg)
+			a.updateSearch()
 		}
 	}
 	return a, nil
@@ -333,75 +340,34 @@ func (a *App) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 	if a.taskView != nil {
 		return a.handleTaskViewKey(key)
 	}
+	if a.searching() && a.search.input.Focused() {
+		return a.handleSearchInput(msg)
+	}
 	if a.pendingG {
 		a.pendingG = false
-		switch key {
-		case "g":
+		if key == "g" {
 			a.current.Top()
-		case "p":
-			g := &gotoDialog{}
-			if a.current.Spec.Kind == view.Project {
-				g.selectProject(a, a.current.Spec.Project) // start on the project being viewed
-			}
-			a.push(g)
-		default:
-			if k, ok := fixedViews[key]; ok {
-				a.current = a.lists[k]
-			}
+		} else if b, ok := lookup(key, gotoGroup); ok {
+			return b.act(a, a.current, key)
 		}
 		return nil
 	}
-
-	l := a.current
-	archive := l.Spec.Kind == view.Archive
-	if open, ok := editKeys[key]; ok && !archive { // G6.6: edit keys work on the selected row
-		if t, ok := l.Selected(); ok {
-			a.push(open(a, t))
-		}
+	if a.searching() && (key == "esc" || key == "/") {
+		a.search.input.Focus() // G7.2a: back to the input
 		return nil
 	}
-	switch key {
-	case "e":
-		a.openTaskView()
-	case "q":
-		a.push(newAddTaskDialog(l.Spec.Project)) // G5.4: a project list defaults to its project
-	case "g":
+	if key == "g" {
 		a.pendingG = true
-	case "up", "k":
-		l.Move(-1)
-	case "down", "j":
-		l.Move(1)
-	case "pgup":
-		l.Page(-1)
-	case "pgdown":
-		l.Page(1)
-	case "home":
-		l.Top()
-	case "end", "G", "shift+g":
-		l.Bottom()
-	case "space":
-		if !archive {
-			return a.toggleDone()
-		}
-	case "s":
-		return a.saveSort(l, l.NextSort())
-	case "x":
-		t, ok := l.Selected()
-		if !ok {
-			break
-		}
-		if archive {
-			a.push(&confirmDialog{message: "Delete " + quote(a.theme, t.Name) + " forever?", action: "delete", run: a.deleteTask(t)})
-		} else {
-			a.push(&confirmDialog{message: "Archive " + quote(a.theme, t.Name) + "?", action: "archive", run: a.archiveTask(t)})
-		}
-	case "u":
-		if t, ok := l.Selected(); ok && archive {
-			return a.unarchiveTask(t)
-		}
+		return nil
+	}
+	if b, ok := lookup(key, listGroup, taskGroup, generalGroup); ok && b.act != nil {
+		return b.act(a, a.current, key)
 	}
 	return nil
 }
+
+// searching reports whether the Search view is showing.
+func (a *App) searching() bool { return a.search != nil && a.current == a.search.list }
 
 // isQuit reports whether msg is a quit key. `q` is "add task" in the designs,
 // so quitting is ctrl+c or ctrl+q (decision G0.4 in PLAN.md).
@@ -450,15 +416,6 @@ func (a *App) View() tea.View {
 	return v
 }
 
-// hintRow1 is the first key-hint row from the list view designs (32:9525),
-// with `x` relabelled "archive" (G4.5); hintRow2 is the second.
-var (
-	hintRow1 = []widget.Hint{{Key: "q", Label: "add"}, {Key: "space", Label: "done"}, {Key: "e", Label: "edit/view"},
-		{Key: "x", Label: "archive"}, {Key: "s", Label: "sort"}, {Key: "?", Label: "shortcuts"}, {Key: "/", Label: "search"}}
-	hintRow2 = []widget.Hint{{Key: "g i", Label: "inbox"}, {Key: "g t", Label: "today"}, {Key: "g u", Label: "upcoming"},
-		{Key: "g p", Label: "projects"}, {Key: "g o", Label: "overdue"}, {Key: "g a", Label: "all"}}
-)
-
 func (a *App) render() string {
 	t := a.theme
 	switch {
@@ -491,11 +448,11 @@ func (a *App) renderView(t theme.Theme) string {
 	if a.pendingG {
 		pending = "g" + t.G.Ellipsis
 	}
-	lines = append(lines, l.StatusBar(t, a.width, pending, a.message))
-	row1 := hintRow1
-	if l.Spec.Hints != nil {
-		row1 = l.Spec.Hints
+	if a.searching() && a.message == "" {
+		lines = append(lines, a.searchBar(t)) // G7: the input replaces the status bar
+	} else {
+		lines = append(lines, l.StatusBar(t, a.width, pending, a.message))
 	}
-	lines = append(lines, widget.KeyHints(t, a.width, row1, hintRow2)...)
+	lines = append(lines, widget.KeyHints(t, a.width, listHints(t.G, l.Spec.Kind)...)...)
 	return widget.Screen(t, a.width, a.height, lines)
 }

@@ -91,8 +91,10 @@ func (a *App) handleTaskViewKey(key string) tea.Cmd {
 			return a.unarchiveTask(t)
 		}
 	default:
-		if open, ok := editKeys[key]; ok && !tv.readOnly {
-			a.push(open(a, t))
+		if f, ok := editFieldFor(key); ok && !tv.readOnly {
+			a.push(f.open(a, t))
+		} else if key == "?" {
+			a.push(&shortcutsDialog{})
 		}
 	}
 	return nil
@@ -101,14 +103,21 @@ func (a *App) handleTaskViewKey(key string) tea.Cmd {
 // taskViewHints are the view's hint rows (29:7123), with `x` meaning
 // archive (G6.4); read-only for archived tasks (G6.7).
 func (a *App) taskViewHints(t theme.Theme) [][]w.Hint {
-	nav := w.Hint{Key: t.G.Up + " / " + t.G.Down, Label: "scroll"}
+	g := t.G
+	nav, esc := hintFor(g, "up", "scroll"), hintFor(g, "esc", "return to list")
 	if a.taskView.readOnly {
-		return [][]w.Hint{{nav, {Key: "u", Label: "unarchive"}, {Key: "x", Label: "delete forever"}, {Key: "esc", Label: "return to list"}}, {}}
+		return [][]w.Hint{{nav, hintFor(g, "u"), hintFor(g, "x", "delete forever"), esc}, {}}
+	}
+	edit := func(keys ...string) []w.Hint {
+		var out []w.Hint
+		for _, k := range keys {
+			out = append(out, hintFor(g, k))
+		}
+		return out
 	}
 	return [][]w.Hint{
-		{nav, {Key: "space", Label: "done"}, {Key: "esc", Label: "return to list"}, {Key: "x", Label: "archive"}, {Key: "n", Label: "name"}},
-		{{Key: "p", Label: "priority"}, {Key: "v", Label: "project"}, {Key: "r", Label: "start date"},
-			{Key: "t", Label: "due date"}, {Key: "y", Label: "duration"}, {Key: "d", Label: "description"}},
+		append([]w.Hint{nav, hintFor(g, "space"), esc, hintFor(g, "x")}, edit("n")...),
+		edit("p", "v", "r", "t", "y", "d"),
 	}
 }
 
