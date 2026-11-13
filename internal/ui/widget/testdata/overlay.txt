@@ -1,0 +1,24 @@
+taskmoth ▸ Today                                       tues · 2026-11-10 · 15:26
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+xxxxxxxxxx┌─ Goto Project ───────────────────────────────────────────┐xxxxxxxxxx
+xxxxxxxxxx│                                                         ││xxxxxxxxxx
+xxxxxxxxxx│ Select a project to open its list:                      █│xxxxxxxxxx
+xxxxxxxxxx│                                                         █│xxxxxxxxxx
+xxxxxxxxxx│   #oneofftasks                                          █│xxxxxxxxxx
+xxxxxxxxxx│   #reminders                                            █│xxxxxxxxxx
+xxxxxxxxxx│ ▶ #groceries                                            █│xxxxxxxxxx
+xxxxxxxxxx│   #parenting                                            █│xxxxxxxxxx
+xxxxxxxxxx│   #work                                                 █│xxxxxxxxxx
+xxxxxxxxxx│   #homelab-tech                                         ││xxxxxxxxxx
+xxxxxxxxxx│   #hobbies-games                                        ││xxxxxxxxxx
+xxxxxxxxxx│   #movies-tv                                            ││xxxxxxxxxx
+xxxxxxxxxx│                                                         ││xxxxxxxxxx
+xxxxxxxxxx│ ↑ / ↓ select  enter select  esc cancel  n new  x delet  ││xxxxxxxxxx
+xxxxxxxxxx└──────────────────────────────────────────────────────────┘xxxxxxxxxx
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+  Today   6 tasks                                                    s:priority 
+ q add  space done  e edit/view  x delete  s sort  ? shortcuts  / search        
+ g i inbox  g t today  g u upcoming  g p projects  g o overdue  g a all         

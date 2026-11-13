@@ -1,0 +1,15 @@
+┌─ Goto Project ───────────────────────────────────────────┐
+│                                                         ││
+│ Select a project to open its list:                      █│
+│                                                         █│
+│   #oneofftasks                                          █│
+│   #reminders                                            █│
+│ ▶ #groceries                                            █│
+│   #parenting                                            █│
+│   #work                                                 █│
+│   #homelab-tech                                         ││
+│   #hobbies-games                                        ││
+│   #movies-tv                                            ││
+│                                                         ││
+│ ↑ / ↓ select  enter select  esc cancel  n new  x delet  ││
+└──────────────────────────────────────────────────────────┘

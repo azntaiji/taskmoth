@@ -1,0 +1,2 @@
+ q add  space done  e edit/view  x delete  s sort  ? shortcuts  / search        
+ g i inbox  g t today  g u upcoming  g p projects  g o overdue  g a all         

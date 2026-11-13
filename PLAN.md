@@ -24,7 +24,7 @@ Observed directly from the Figma frames; treat as requirements unless a gate ove
 
 **Grid.** Designed on an 80×24 cell terminal (cell 12×24 px, JetBrains Mono Nerd Font). All spacing tokens are whole cells.
 
-**Tokens** (from Figma variables — re-pull with `get_variable_defs`, do not hardcode from this table):
+**Tokens.** Figma has two colour layers: "Primitives / Palette", the 16 ANSI slots with a "Dracula" mode, and "Semantic / Color", tokens that alias slots. `get_variable_defs` returns only resolved hex values. To see which slot each token points to, read the collections with a read-only `use_figma` script. The code mirrors both layers in `internal/ui/theme/palette.go` and `colors.go` (G1.7). Resolved Dracula values, for reference only:
 
 | Token | Value | Token | Value |
 |---|---|---|---|
@@ -48,7 +48,7 @@ Observed directly from the Figma frames; treat as requirements unless a gate ove
 
 **Inbox variant.** One line per task (checkbox + name only), blank spacer between, status `6 tasks to organize`, no sort indicator.
 
-**Dialogs.** 60 cells wide, square-cornered box border in cyan with a purple title inset in the top border, muted help text, input area on a `statusbar/bg`-coloured field with a `>` prompt and block cursor, key hints on the last line. Overlaid centred on the current view, which is rendered **dimmed** behind it (node `32:13454`). The Keyboard Shortcuts dialog and the Single Task frame use a muted border instead.
+**Dialogs.** 60 cells wide, square-cornered box border in cyan with a purple title inset in the top border, muted help text, input area on a `bg/input` field with a `>` prompt and block cursor, key hints on the last line. Overlaid centred on the current view, which is rendered **dimmed** behind it (node `32:13454`). The Keyboard Shortcuts dialog and the Single Task frame use a muted border instead.
 
 **Add-task syntax shown in the design:** `#project`, `s:<start>`, `@<due>`, `~<duration>`, `!p1`–`!p4`; e.g. `Change the laundry #oneofftasks @in 2 days ~30m !p2 s:tomorrow`. Tasks with no `#project` go to Inbox.
 
@@ -302,6 +302,7 @@ Not to be built now, but keep the door open:
 
 - **Task time tracking** — start/stop timers per task, actual vs estimated duration. Implication now: keep duration stored as minutes and keep `completed_at`.
 - **Task and project analytics** — completion rates, time per project, trends. Implication now: keep timestamps on tasks and prefer a queryable store.
+- **Theme support** — user-selectable colour themes (e.g. files in `~/.config/taskmoth/themes/` mapping Figma token names to colours), possibly including a light theme and a theme that follows the terminal's own ANSI palette. Implication now: every colour goes through `theme.Colors` (named after its Figma variable); views never construct colours. A terminal-palette theme can't use pre-blended dimming (G1.4) because its RGB values are unknown, so it would need the faint attribute instead.
 
 ---
 
@@ -317,3 +318,12 @@ Record every gate outcome here before proceeding.
 | G0.4 | Quit with **`ctrl+c` and `ctrl+q`** | 2026-11-12 | Must be listed in the Keyboard Shortcuts dialog (Phase 7). |
 | G0.5 | Module `github.com/azntaiji/taskmoth`; **MIT** licence; local `git init` (no remote, no push) | 2026-11-12 | Repo already existed (operator's `Initial Commit` ab00710), so no init was needed. |
 | G0.6 | `go 1.26` minimum in `go.mod`; add **AGENTS.md** | 2026-11-12 | Local toolchain is 1.27.3. |
+| G1.1 | **Fluid layout, minimum 80×24.** Header, rows and status bar stretch to full width; the list shows more rows when the terminal is taller; dialogs stay 60 cells wide and centred; below 80×24, show a "terminal too small" message. | 2026-11-12 | |
+| G1.2 | **Automatic colour downsampling** (Lip Gloss) on 256- and 16-colour terminals. No light theme. | 2026-11-12 | |
+| G1.3 | **Plain Unicode glyphs with an ASCII fallback.** Use only the symbols in the designs, no Nerd Font icons. An opt-in setting swaps them for ASCII. | 2026-11-12 | The fallback's trigger (env var, flag or config) and the ASCII character for each glyph are open sub-decisions to confirm before the glyph table is built. |
+| G1.4 | **Pre-blended dimming.** Draw the view behind a dialog with a second theme whose colours are mixed 50% toward `bg/default`, not with the ANSI faint attribute. | 2026-11-12 | The operator compared both options in a terminal demo. This matches Figma's `attr/dim-opacity` of 50%. |
+| G1.3a | **ASCII fallback is turned on by `--ascii` or `TASKMOTH_ASCII=1`.** | 2026-11-12 | No config file is needed for this. |
+| G1.3b | **ASCII uses one character per glyph**, so layouts stay the same width: `▶`→`>`, `▸`→`>`, `↑`/`↓`→`^`/`v`, `←`/`→`→`<`/`>`, `·`→`-`, `─`→`-`, `│`→`\|`, corners→`+`, scrollbar thumb→`#`, scrollbar track→`\|`. | 2026-11-12 | |
+| G1.5 | **Proportional scrollbar thumb, hidden when everything fits.** The thumb's size reflects visible/total and it moves between the first and last track cells (as in Figma). When the whole list fits, only the track shows. | 2026-11-12 | Raised during Phase 1. Figma shows a fixed 3-row thumb, which is a static mock. |
+| G1.6 | **The ASCII truncation tail is `...`**, counted inside the truncated width. | 2026-11-12 | Raised during Phase 1. G1.3b did not cover `…`. |
+| G1.7 | **The theme mirrors Figma's two colour layers, drawn as 24-bit RGB from the Dracula palette.** `theme.Palette` holds the 16 ANSI slots plus `base/fg` and `base/bg`. `theme.Semantic` resolves every semantic token to a slot exactly as Figma aliases it. Colours are sent as RGB, not ANSI indices, so the app looks the same in every terminal and dimming can blend real colours (G1.4). | 2026-11-12 | Supersedes the Phase 1 approach of copying resolved hex values. A palette that follows the terminal's own ANSI colours is a future theme (§7) and would need faint-attribute dimming. |

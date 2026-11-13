@@ -3,17 +3,21 @@ package ui
 
 import (
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/azntaiji/taskmoth/internal/ui/theme"
+	"github.com/azntaiji/taskmoth/internal/ui/widget"
 )
 
-// App is the root model. In Phase 0 it only draws a placeholder and handles
-// quitting; views, dialogs and key chords arrive in later phases.
+// App is the root model. So far it draws a placeholder and handles quitting
+// and terminal size; views, dialogs and key chords arrive in later phases.
 type App struct {
+	theme         theme.Theme
 	width, height int
 }
 
-// NewApp returns the root model.
-func NewApp() App {
-	return App{}
+// NewApp returns the root model drawn with t.
+func NewApp(t theme.Theme) App {
+	return App{theme: t}
 }
 
 // Init implements tea.Model.
@@ -46,8 +50,25 @@ func isQuit(msg tea.KeyPressMsg) bool {
 
 // View implements tea.Model.
 func (a App) View() tea.View {
-	v := tea.NewView("taskmoth\n\nctrl+c / ctrl+q to quit\n")
+	v := tea.NewView(a.render())
 	v.AltScreen = true
 	v.WindowTitle = "taskmoth"
 	return v
+}
+
+func (a App) render() string {
+	t := a.theme
+	switch {
+	case a.width == 0 || a.height == 0:
+		return "" // size not known yet
+	case a.width < widget.MinWidth || a.height < widget.MinHeight:
+		return widget.TooSmall(t, a.width, a.height)
+	}
+	lines := []string{widget.Header(t, a.width, "Today", "")}
+	for len(lines) < a.height-2 {
+		lines = append(lines, "")
+	}
+	lines = append(lines, widget.StatusBar(t, a.width, "Today", theme.ToneInfo, "Task views arrive in Phase 3", ""))
+	lines = append(lines, widget.KeyHints(t, a.width, []widget.Hint{{Key: "ctrl+q", Label: "quit"}})...)
+	return widget.Screen(t, a.width, a.height, lines)
 }

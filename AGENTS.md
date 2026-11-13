@@ -16,10 +16,22 @@ taskmoth is a keyboard-driven TUI task manager in Go (Bubble Tea v2, Lip Gloss v
 ## Layout
 
 ```
-cmd/taskmoth/      entry point and flags (--data)
-internal/paths/    XDG data/config directory resolution
-internal/ui/       Bubble Tea models (root App in app.go)
+cmd/taskmoth/        entry point and flags (--data, --ascii, --gallery)
+internal/paths/      XDG data/config directory resolution
+internal/ui/         Bubble Tea models (root App in app.go)
+internal/ui/theme/   Figma colour tokens, the dimmed theme, glyph sets (Unicode/ASCII)
+internal/ui/widget/  widgets built from the Figma Components page (header, status bar,
+                     key hints, badges, checkbox, marker, scrollbar, frame, input, overlay)
+internal/ui/gallery/ dev gallery (taskmoth --gallery) for comparing widgets with Figma
 ```
+
+## UI conventions
+
+- **Colours follow Figma's two layers.** `theme.Palette` (`palette.go`) holds the 16 ANSI slots, and `theme.Semantic` (`colors.go`) maps each semantic token to a slot, mirroring Figma's aliases. Widgets and views use only `theme.Colors` fields, each named after its Figma semantic variable. They never use palette slots or hex values directly. To add a token, read its alias in Figma, add the field and its slot in `Semantic`, then add its expected value in `TestSemanticMatchesFigma`. `get_variable_defs` shows only resolved hex; read the alias with a read-only `use_figma` script.
+- **Glyphs come from `theme.Glyphs`.** Never write `▶`, `│`, `…` and so on directly, so that `--ascii` / `TASKMOTH_ASCII=1` keeps working.
+- **Dimming:** draw the view behind a dialog with `theme.Dimmed()`, then composite it with `widget.Overlay`. A component's own "dim" variant (completed tasks, the header clock) uses `theme.Fade` / `FadeOn`.
+- **Widths are terminal cells, not bytes or runes.** One Figma cell is 12×24 px. Truncate plain text with `widget.Truncate` before styling it, and lay out with `Fit` / `Spread`.
+- **Every rendered line must be exactly the target width.** The golden tests assert this.
 
 PLAN.md §4 describes the full target layout.
 
@@ -28,7 +40,9 @@ PLAN.md §4 describes the full target layout.
 ```
 make build   # bin/taskmoth
 make run     # go run ./cmd/taskmoth  (ARGS="--data /tmp/tm")
+make gallery # widget gallery; tab / shift+tab between pages, ctrl+q quits
 make test    # go test ./...
+make golden  # rewrite golden files after an intended visual change, then review the diff
 make vet
 make lint    # golangci-lint v2 via go run (no install needed)
 make fmt
