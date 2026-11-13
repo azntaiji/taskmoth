@@ -88,7 +88,7 @@ With Go 1.26 or later:
 go install github.com/azntaiji/taskmoth/cmd/taskmoth@latest
 ```
 
-This puts `taskmoth` in `$(go env GOPATH)/bin`. Run the same command to upgrade.
+This puts `taskmoth` in `$(go env GOPATH)/bin`. Run the same command to upgrade. `@latest` installs the newest release; use `@main` instead for the latest unreleased changes.
 
 ## Usage
 

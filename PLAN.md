@@ -287,7 +287,7 @@ Principles:
 
 **Exit:** tagged release installable on both platforms.
 
-*Progress (2026-11-13):* G8.1–G8.7 decided. Done: integrity check, pre-migration backups, single-instance lock, `--version`, trimmed `--help`, GoReleaser config and release workflow (`make release-check` builds all four archives), README install steps. Checked automatically: every screen at sizes from 1×1 to 200×60; truecolor, 256-colour and 16-colour output; tmux. With 5,000 tasks on an M1 Pro, moving and redrawing takes 0.7 ms, a search keystroke 9.5 ms, and the reload after an edit 25 ms (`go test ./internal/ui -bench 5000`). Operator confirmed iTerm2, Terminal.app and Ghostty on macOS (2026-11-13). Left: GNOME Terminal, SSH, and installing a tagged release on macOS and Ubuntu.
+*Progress (2026-11-13):* G8.1–G8.7 decided. Done: integrity check, pre-migration backups, single-instance lock, `--version`, trimmed `--help`, GoReleaser config and release workflow (`make release-check` builds all four archives), README install steps. Checked automatically: every screen at sizes from 1×1 to 200×60; truecolor, 256-colour and 16-colour output; tmux. With 5,000 tasks on an M1 Pro, moving and redrawing takes 0.7 ms, a search keystroke 9.5 ms, and the reload after an edit 25 ms (`go test ./internal/ui -bench 5000`). Operator confirmed iTerm2, Terminal.app and Ghostty on macOS, and Ubuntu 24.04 over SSH, directly and inside tmux (2026-11-13). Left: installing a tagged release on macOS and Ubuntu. GNOME Terminal itself wasn't tried (the Ubuntu machine is headless).
 
 ---
 
