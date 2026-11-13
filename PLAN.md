@@ -304,6 +304,8 @@ Not to be built now, but keep the door open:
 
 - **Task time tracking** — start/stop timers per task, actual vs estimated duration. Implication now: keep duration stored as minutes and keep `completed_at`. Storage plan (G2.4): a separate `time_entries(id, task_id → tasks.id, started_at, ended_at)` table added by a new migration, many entries per task, not a column on `tasks`.
 - **Task and project analytics** — completion rates, time per project, trends. Implication now: keep timestamps on tasks and prefer a queryable store.
+- **Recurring tasks** — e.g. `every monday`, `every 3 months`, Todoist's `every!` (repeat from completion). Implication now: quick add leaves recurring phrases in the name (G5.1e).
+- **Times of day** — due and start times (`tomorrow at 4pm`). Dates are date-only today (G2.1b), so this needs a schema change.
 - **Theme support** — user-selectable colour themes (e.g. files in `~/.config/taskmoth/themes/` mapping Figma token names to colours), possibly including a light theme and a theme that follows the terminal's own ANSI palette. Implication now: every colour goes through `theme.Colors` (named after its Figma variable); views never construct colours. A terminal-palette theme can't use pre-blended dimming (G1.4) because its RGB values are unknown, so it would need the faint attribute instead.
 
 ---
@@ -366,3 +368,103 @@ Record every gate outcome here before proceeding.
 | G4.12 | **Goto Project's hint row follows the selection.** With an archived project selected it shows `↑ / ↓ select  u unarchive  x delete forever  esc cancel`. The dialog opens on the project being viewed. | 2026-11-12 | Approved at the Phase 4 review. |
 | G4.13 | **Status-bar notices** after project and archive actions: "Created #x.", "Archived #x.", "Unarchived #x.", "Deleted #x forever.", "Moved to Inbox (#x is archived)." | 2026-11-12 | Approved at the Phase 4 review. |
 | G4.14 | **Completed and Archive rows show grey date badges** (completion or archive date). Their summaries are "N completed" and "N archived". Project and All lists show "N tasks · ~total · ~remaining", as in the project frame. | 2026-11-12 | Approved at the Phase 4 review. G4.3 stands: project lists show today's due date as a yellow date, not the word. |
+| G5.1 | **The quick-add grammar in Appendix A is approved as written**, including all 46 examples, which become the parser's test table. | 2026-11-12 | A weekday matching today means next week's. |
+| G5.1a | **Quick add is a Todoist-style hybrid.** Bare date phrases set the due date and bare `p1`–`p4` set the priority, as in Todoist. The design's sigils also work: `@` due, `s:` start, `~` duration, `#` project, `!p1`–`!p4` priority. Recognised tokens are highlighted as you type. | 2026-11-12 | Based on Todoist's help docs (Task Quick Add; Introduction to dates and time); no reverse engineering was needed. |
+| G5.1b | **A value is the longest valid phrase after its sigil** (`@in 2 days` takes three words; `@tomorrow buy milk` takes one). A sigil without a valid value stays literal text. A backslash before a word keeps it literal (`\friday`). | 2026-11-12 | |
+| G5.1d | **`ctrl+t` toggles the recognised token at or just before the cursor** between parsed (highlighted) and plain text. The hint row shows `ctrl+t keep as text`. | 2026-11-12 | The keyboard version of Todoist's click-to-unhighlight. |
+| G5.1e | **Times and recurring phrases aren't stored** (G2.1b; tasks don't repeat). `tomorrow at 4pm` sets the due date to tomorrow, and `at 4pm` stays in the name. `every monday` isn't recognised and stays in the name. | 2026-11-12 | Recurring tasks and times of day were added to the roadmap (§7). |
+| G5.1c | **Date rules:** numerics are US month/day (`11/20`, `11/20/2027`; `27/1` reads as Jan 27 because 27 can't be a month). A bare weekday is the next one. `next <weekday>` follows Todoist: the one in the following week if this week's hasn't passed. `next week` = next Monday, `next month` = the 1st of next month, `weekend` = the coming Saturday. The full phrase list is Appendix A. | 2026-11-12 | |
+| G5.1f | **Short words only count after a sigil.** Bare recognition covers full words and phrases (`tomorrow`, `friday`, `november 20`, `in 3 days`) and month+day (`may 5`). Abbreviations and lone month names (`tom`, `sun`, `wed`, `may`) need `@` or `s:`. | 2026-11-12 | |
+| G5.2 | **Project autocomplete plus did-you-mean.** Typing `#mu` lists matching projects under the input (fuzzy, so `#musc` still lists `#music`); `tab` completes the highlighted one. Saving with an unknown `#name` asks "Create #musc? Did you mean #music?" (`tab` uses the suggestion, `enter` creates the new project, `esc` keeps editing). An archived project's name is refused with the G4.11 message. | 2026-11-12 | Guards against near-duplicate projects. |
+| G5.3 | **A hand-written parser** in `internal/nlp`: deterministic, table-tested and dependency-free, shared with the edit dialogs' date and duration fields. | 2026-11-12 | |
+| G5.4 | **Add Task feedback:** a muted preview line under the input, e.g. `→ #oneofftasks · due 2026-11-12 · s:2026-11-11 · ~30m · P2`. In a project's list the project defaults to that project, otherwise the Inbox, unless `#` is typed. `enter` adds the task and closes the dialog; the new task is selected if it's in the current view; the status bar says `Added "name".` | 2026-11-12 | The preview line isn't in the design (40:16708). |
+| G5.5 | **Approved at the Phase 5 review:**<br>• Recognised tokens are highlighted in `text/link`; the did-you-mean line is `text/warning` and errors are `text/error`.<br>• `ctrl+t` toggles a match by inserting or removing visible backslashes.<br>• The Add Task dialog grows below the input for the preview line (which wraps to two lines when long) and up to four suggestions.<br>• Prompt hints are shortened to fit (`tab #x  enter create  esc edit`; `esc hide list`).<br>• Did-you-mean suggests projects within 2 edits, or whose name contains the typed letters in order.<br>• `q` works in every view; from Completed and the Archive, tasks go to the Inbox.<br>• After adding, the status bar shows `Added "name".` and, when a project was created, `Created #x.` | 2026-11-12 | Known limitation: a word with trailing punctuation (`tomorrow.`) isn't recognised. |
+
+---
+
+## Appendix A. Quick-add grammar (G5.1, approved 2026-11-12)
+
+Matching is case-insensitive and works on whole words. The examples assume today is **Tue 2026-11-10**, and weeks start on Monday.
+
+### Tokens
+
+| Field | Forms | Notes |
+|---|---|---|
+| Project | `#name` | `name` is `[A-Za-z0-9_-]+`, lowercased (`#Work` → `#work`). `#` must start a word, so `C#` is literal. Autocomplete and did-you-mean (G5.2) apply. |
+| Priority | `p1`–`p4` bare, or `!p1`–`!p4` | Whole word. `p5` and `p0` stay as text. With no priority, the task is P4. |
+| Duration | `~` + duration | `~30m`, `~30min`, `~30 minutes`, `~1.5h`, `~2h`, `~2 hours`, `~1h30m`, `~1h 30m`, `~90` (a bare number means minutes). Stored as whole minutes, rounded. `~` is required. |
+| Start | `s:` + date phrase | |
+| Due | `@` + date phrase, or a bare date phrase | Bare phrases are limited by G5.1f. |
+| Literal | `\` + word | The backslash is removed and the word stays text (`\friday`, `\#1`). |
+
+- **Repeated fields:** if a field appears more than once, the **last** occurrence counts and the earlier ones stay in the name.
+- **Values:** a value is the longest valid phrase (G5.1b). A sigil with no valid value stays as text.
+- **The name** is what's left once recognised tokens are removed, with whitespace collapsed. An empty name is an error ("Enter a task name.").
+
+### Date phrases
+
+- **ISO:** `2026-11-20`.
+- **US numerics:** `11/20`, `11/20/2027`, `11/20/27`. A first number over 12 reads as day/month (`27/1`). Invalid dates (`2/30`) stay as text.
+- **Relative days:** `today`, `tomorrow`, `yesterday`. The short forms `tod` and `tom` need a sigil.
+- **Weekdays:** `monday`…`sunday` mean the next one after today (today's own weekday means next week's; use `today` for today). The short forms `mon`…`sun` need a sigil. `this friday` is the same as `friday`.
+- **`next <weekday>`:** the one in the following week if this week's hasn't passed, otherwise the next upcoming one (Todoist's rule).
+- **Periods:** `next week` is next Monday, `next month` the 1st of next month, `next year` January 1st. `weekend` and `this weekend` are the coming Saturday; `next weekend` is the Saturday of next week.
+- **Offsets:** `in N days|weeks|months|years` (N is digits, or `a`/`an` for 1), `N days|weeks|months before|after <date>`.
+- **Month and day:** `nov 20`, `november 20`, `20 nov`, `20th november`, `nov 20 2027`. A past date without a year means next year's. A lone month (`may`) is the 1st of that month and needs a sigil.
+- **Ordinal day:** `27th` is the next 27th (this month if it hasn't passed).
+- **Named points:** `mid <month>` is the 15th. `end of month` (or `eom`, sigil only) is the last day of this month. `end of <month>` is the last day of that month.
+- **Clearing:** `no date` / `no due date` means no date. It's mainly for the edit dialogs.
+- **Not recognised; stays in the name:** times (`at 4pm`, `16:00`, `4pm`; G5.1e) and recurring phrases (`every monday`, `daily`).
+
+### Examples (Tue 2026-11-10)
+
+| # | Input | Name | Project | Due | Start | Dur | Pri |
+|---|---|---|---|---|---|---|---|
+| 1 | `Change the laundry #oneofftasks @in 2 days ~30m !p2 s:tomorrow` (design sample) | Change the laundry | oneofftasks | 2026-11-12 | 2026-11-11 | 30 | P2 |
+| 2 | `Buy milk` | Buy milk | Inbox | – | – | – | P4 |
+| 3 | `Buy milk tomorrow` | Buy milk | Inbox | 2026-11-11 | – | – | P4 |
+| 4 | `Call mom tomorrow at 4pm` | Call mom at 4pm | | 2026-11-11 | | | |
+| 5 | `Submit report friday` | Submit report | | 2026-11-13 | | | |
+| 6 | `Submit report next friday` | Submit report | | 2026-11-20 | | | |
+| 7 | `Plan sprint next monday` | Plan sprint | | 2026-11-16 | | | |
+| 8 | `Water plants tuesday` | Water plants | | 2026-11-17 | | | |
+| 9 | `Clean garage next week` | Clean garage | | 2026-11-16 | | | |
+| 10 | `Pay rent next month` | Pay rent | | 2026-12-01 | | | |
+| 11 | `Hike this weekend` | Hike | | 2026-11-14 | | | |
+| 12 | `Visit gran next weekend` | Visit gran | | 2026-11-21 | | | |
+| 13 | `Renew passport in 3 weeks` | Renew passport | | 2026-12-01 | | | |
+| 14 | `Dentist in a week` | Dentist | | 2026-11-17 | | | |
+| 15 | `File taxes 2027-04-15` | File taxes | | 2027-04-15 | | | |
+| 16 | `Gift for sam 11/20` | Gift for sam | | 2026-11-20 | | | |
+| 17 | `Concert 27/1` | Concert | | 2027-01-27 | | | |
+| 18 | `Party nov 20` | Party | | 2026-11-20 | | | |
+| 19 | `Trip 20 november` | Trip | | 2026-11-20 | | | |
+| 20 | `Renew lease jan 5` | Renew lease | | 2027-01-05 | | | |
+| 21 | `Pay card 27th` | Pay card | | 2026-11-27 | | | |
+| 22 | `Budget end of month` | Budget | | 2026-11-30 | | | |
+| 23 | `Review mid december` | Review | | 2026-12-15 | | | |
+| 24 | `Order cake 2 days before nov 20` | Order cake | | 2026-11-18 | | | |
+| 25 | `Fix login bug p1` | Fix login bug | | – | | | P1 |
+| 26 | `Fix login bug !p3` | Fix login bug | | | | | P3 |
+| 27 | `Read ~1.5h` | Read | | | | 90 | |
+| 28 | `Read ~1h30m` | Read | | | | 90 | |
+| 29 | `Read ~2 hours` | Read | | | | 120 | |
+| 30 | `Walk ~10 minutes` | Walk | | | | 10 | |
+| 31 | `Prep slides s:monday @friday` | Prep slides | | 2026-11-13 | 2026-11-16 | | |
+| 32 | `Watch Tomorrowland` | Watch Tomorrowland | | – | | | |
+| 33 | `Buy sun cream` | Buy sun cream | | – | | | |
+| 34 | `Run @sun` | Run | | 2026-11-15 | | | |
+| 35 | `Call dad @tom` | Call dad | | 2026-11-11 | | | |
+| 36 | `May 5k race` | May 5k race | | – | | | |
+| 37 | `Pay may 5 bill` | Pay bill | | 2027-05-05 | | | |
+| 38 | `Learn C# basics` | Learn C# basics | Inbox | | | | |
+| 39 | `Email @ 5` | Email @ 5 | | – | | | |
+| 40 | `Fix \friday bug` | Fix friday bug | | – | | | |
+| 41 | `Plan #work #home` | Plan #work | home | | | | |
+| 42 | `Groceries tomorrow friday` | Groceries tomorrow | | 2026-11-13 | | | |
+| 43 | `Report @2026-02-30` | Report @2026-02-30 | | – | | | |
+| 44 | `#Work standup` | standup | work | | | | |
+| 45 | `p5 test` | p5 test | | | | | P4 |
+| 46 | `#work` | (error: "Enter a task name.") | | | | | |
+
+Blank cells mean the same as row 2: Inbox, no dates, no duration, P4. In a project's list, the project defaults to that project unless `#` is used (G5.4).

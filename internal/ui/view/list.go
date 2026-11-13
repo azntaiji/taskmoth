@@ -343,6 +343,16 @@ func (l *List) Selected() (task.Task, bool) {
 	return l.rows[l.sel], true
 }
 
+// Select moves the selection to task id if it is listed.
+func (l *List) Select(id task.ID) {
+	for i, r := range l.rows {
+		if r.ID == id {
+			l.setSel(i)
+			return
+		}
+	}
+}
+
 // Move moves the selection by d rows.
 func (l *List) Move(d int) { l.setSel(l.sel + d) }
 

@@ -256,6 +256,8 @@ func (d *createProjectDialog) update(a *App, msg tea.KeyPressMsg) (bool, tea.Cmd
 	return false, nil
 }
 
+func (d *createProjectDialog) paste(msg tea.PasteMsg) { d.input.Update(msg) }
+
 func (d *createProjectDialog) view(_ *App, t theme.Theme) string {
 	bw := w.FrameBodyWidth(dialogWidth, false)
 	line := help(t, "Enter project name without #:")

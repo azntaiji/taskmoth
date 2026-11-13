@@ -42,10 +42,11 @@ type App struct {
 	projectView map[task.ID]*view.List
 	current     *view.List
 
-	dialogs         []dialog
-	selectAfterLoad task.ID // project to select in Goto Project once reloaded
-	pendingG        bool    // `g` pressed, waiting for the second key (G3.4: no timeout)
-	message         string  // notice or error in the status bar until the next key
+	dialogs             []dialog
+	selectAfterLoad     task.ID // project to select in Goto Project once reloaded
+	selectTaskAfterLoad task.ID // task to select in the current view once reloaded
+	pendingG            bool    // `g` pressed, waiting for the second key (G3.4: no timeout)
+	message             string  // notice or error in the status bar until the next key
 }
 
 // NewApp returns the root model. now supplies the current time (injected so
@@ -208,9 +209,21 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tea.KeyPressMsg:
 		return a, a.handleKey(msg)
+	case taskAddedMsg:
+		a.pop() // the Add Task dialog
+		a.message = fmt.Sprintf("Added %s.", quote(a.theme, msg.t.Name))
+		if msg.newProject != "" {
+			a.message += fmt.Sprintf(" Created #%s.", msg.newProject)
+		}
+		a.selectTaskAfterLoad = msg.t.ID
+		return a, a.load(false)
+	case addFailedMsg:
+		if d, ok := a.topDialog().(*addTaskDialog); ok {
+			d.err = msg.text
+		}
 	case tea.PasteMsg:
-		if c, ok := a.topDialog().(*createProjectDialog); ok {
-			c.input.Update(msg)
+		if p, ok := a.topDialog().(interface{ paste(tea.PasteMsg) }); ok {
+			p.paste(msg)
 		}
 	}
 	return a, nil
@@ -250,6 +263,10 @@ func (a *App) applyLoad(msg loadedMsg) {
 			g.selectProject(a, a.selectAfterLoad)
 		}
 		a.selectAfterLoad = ""
+	}
+	if a.selectTaskAfterLoad != "" {
+		a.current.Select(a.selectTaskAfterLoad) // G5.4: if it's in this view
+		a.selectTaskAfterLoad = ""
 	}
 }
 
@@ -327,6 +344,8 @@ func (a *App) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 	l := a.current
 	archive := l.Spec.Kind == view.Archive
 	switch key {
+	case "q":
+		a.push(newAddTaskDialog(l.Spec.Project)) // G5.4: a project list defaults to its project
 	case "g":
 		a.pendingG = true
 	case "up", "k":

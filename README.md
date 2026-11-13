@@ -7,12 +7,16 @@
 
 A keyboard-driven task manager for the terminal, built with [Bubble Tea](https://github.com/charmbracelet/bubbletea).
 
-> **Status: in development.** All the list views, projects and the archive work: you can browse, sort, complete, archive and organize tasks (phases 0–4 of [PLAN.md](PLAN.md)). Adding and editing tasks, and search, come in later phases. Until then, try it with the sample data (see *Developer flags*).
+> **Status: in development.** You can add tasks with natural-language quick add, and browse, sort, complete, archive and organize them across every list view (phases 0–5 of [PLAN.md](PLAN.md)). Editing a task's fields, and search, come in later phases.
 
 ## Features
 
 Implemented:
 
+- **Natural-language quick add** (`q`), Todoist-style:
+  - Example: `Change the laundry #chores tomorrow ~30m p2 s:monday`.
+  - Recognised parts are highlighted as you type, with a preview line of the result.
+  - Project names autocomplete, and a typo like `#chors` asks "Did you mean #chores?".
 - **List views**:
   - **Today**: due, overdue, or already started.
   - **Upcoming**: the next 7 days, grouped by day.
@@ -33,9 +37,8 @@ Implemented:
 
 Planned (see [PLAN.md](PLAN.md)):
 
-- Adding and editing tasks, search, and a keyboard shortcuts overlay.
-- **Natural-language quick add**, e.g. `Change the laundry #chores @in 2 days ~30m !p2 s:tomorrow`.
-- Later: user themes, time tracking, analytics.
+- Editing tasks, search, and a keyboard shortcuts overlay.
+- Later: recurring tasks, times of day, user themes, time tracking, analytics.
 
 ## Install
 
@@ -60,6 +63,7 @@ Quit with `ctrl+q` or `ctrl+c`. (`q` will be "add task".)
 | `↑`/`↓`, `k`/`j` | move the selection |
 | `pgup`/`pgdn` | move by a page |
 | `home`/`end`, `g g`/`G` | jump to top/bottom |
+| `q` | add a task (quick add; see below) |
 | `space` | complete / reopen the selected task |
 | `s` | cycle the sort (priority → due → start → duration → name) |
 | `x` | archive the selected task (in the Archive: delete forever) |
@@ -68,7 +72,21 @@ Quit with `ctrl+q` or `ctrl+c`. (`q` will be "add task".)
 | `g p` | Goto Project: `enter` open, `n` new project, `x` archive, `u` unarchive |
 | `esc` | cancel a pending `g` or close a dialog |
 
-Dialogs use `←`/`→` to choose a button and `enter` to confirm. The bottom hint rows also show keys from the designs that later phases will make work (`q`, `e`, `?`, `/`).
+Dialogs use `←`/`→` to choose a button and `enter` to confirm. The bottom hint rows also show keys from the designs that later phases will make work (`e`, `?`, `/`).
+
+### Quick add
+
+Type the task name. Anything taskmoth recognises is highlighted and shown in the preview line.
+
+| Write | Sets |
+|---|---|
+| `tomorrow`, `friday`, `next week`, `in 3 days`, `nov 20`, `27th`, `end of month`, `2 days before nov 20`, `11/20`, `2027-04-15` | due date (the `@` prefix is optional: `@tom`, `@sun`) |
+| `s:monday`, `s:tomorrow` | start date |
+| `#project` | project (`tab` completes; an unknown name asks before creating it) |
+| `p1`–`p4` or `!p1`–`!p4` | priority (default P4) |
+| `~30m`, `~1.5h`, `~1h30m`, `~2 hours` | estimated duration |
+
+If something is recognised by mistake ("Pay may 5 bill"), put the cursor on it and press `ctrl+t` to keep it as text, or type `\` before the word. Times and repeats (`at 4pm`, `every monday`) stay in the name. The full grammar is [PLAN.md Appendix A](PLAN.md#appendix-a-quick-add-grammar-g51-approved-2026-11-12).
 
 ## Development
 
@@ -89,6 +107,7 @@ The code is laid out as:
 ```
 cmd/taskmoth/        entry point and flags
 internal/task/       domain model, view filters, sorting (pure; no UI or storage)
+internal/nlp/        quick-add parser, date phrases, durations (pure)
 internal/store/      SQLite store, migrations, in-memory store for tests
 internal/seed/       sample data from the designs
 internal/ui/view/    list views (Today, Inbox, …)

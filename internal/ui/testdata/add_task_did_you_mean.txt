@@ -1,0 +1,24 @@
+taskmoth ▸ Today                                       tues · 2026-11-10 · 15:26
+                                                                               │
+▶ [ ]  P1  Pay credit card balances                                     today  │
+           #oneofftasks  ~30m  s:2026-11-10                                    │
+          ┌─ Add Task ───────────────────────────────────────────────┐         │
+  [ ]  P2 │                                                          │overdue  │
+          │ Add a new task using natural language. Options: # to     │         │
+          │ assign to a project, s: to set start date, @ to set due  │         │
+  [ ]  P4 │ date, ~ to set duration, ! to set priority. Tasks        │6-11-14  │
+          │ without options are sent to the Inbox.                   │         │
+          │                                                          │         │
+          │ > Return library books #onofftasks                       │         │
+          │                                                          │         │
+          │                                                          │         │
+          │                                                          │         │
+          │ Create #onofftasks? Did you mean #oneofftasks?           │         │
+          │                                                          │         │
+          │ tab #oneofftasks  enter create  esc edit                 │         │
+          └──────────────────────────────────────────────────────────┘         │
+                                                                               │
+                                                                               │
+  Today   3/3 tasks · ~2.25h total · ~2.25h remaining                s:priority 
+ q add  space done  e edit/view  x archive  s sort  ? shortcuts  / search       
+ g i inbox  g t today  g u upcoming  g p projects  g o overdue  g a all         

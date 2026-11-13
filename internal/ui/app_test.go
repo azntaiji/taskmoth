@@ -50,13 +50,27 @@ func keyText(s string) tea.KeyPressMsg {
 		return tea.KeyPressMsg{Code: tea.KeyHome}
 	case "end":
 		return tea.KeyPressMsg{Code: tea.KeyEnd}
+	case "right":
+		return tea.KeyPressMsg{Code: tea.KeyRight}
+	case "left":
+		return tea.KeyPressMsg{Code: tea.KeyLeft}
+	case "tab":
+		return tea.KeyPressMsg{Code: tea.KeyTab}
+	case "enter":
+		return tea.KeyPressMsg{Code: tea.KeyEnter}
+	case "backspace":
+		return tea.KeyPressMsg{Code: tea.KeyBackspace}
+	case "ctrl+t":
+		return tea.KeyPressMsg{Code: 't', Mod: tea.ModCtrl}
 	case "ctrl+q":
 		return tea.KeyPressMsg{Code: 'q', Mod: tea.ModCtrl}
 	case "ctrl+c":
 		return tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl}
 	}
-	r := []rune(s)[0]
-	return tea.KeyPressMsg{Code: r, Text: s}
+	if r := []rune(s); len(r) == 1 {
+		return tea.KeyPressMsg{Code: r[0], Text: s}
+	}
+	panic("keyText: unknown key " + s)
 }
 
 // designStore holds exactly the tasks in the Today (32:9525) and Inbox

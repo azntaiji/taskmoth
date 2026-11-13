@@ -20,11 +20,13 @@ taskmoth is a keyboard-driven TUI task manager in Go (Bubble Tea v2, Lip Gloss v
 cmd/taskmoth/        entry point and flags (--data, --ascii, --gallery, --seed, --list)
 internal/paths/      XDG data/config directory resolution
 internal/task/       domain model, validation, view filters, sort orders (pure)
+internal/nlp/        quick-add parser (PLAN.md Appendix A), ParseDate, ParseDuration (pure)
 internal/store/      Store interface; SQLite implementation + embedded migrations;
                      in-memory implementation for UI tests (both pass the same contract tests)
 internal/seed/       sample data from the designs (taskmoth --seed)
 internal/ui/         root Bubble Tea model (app.go): store, clock, key chords, view switching;
-                     dialogs.go: dialog stack, Goto Project, Create New Project, confirmations
+                     dialogs.go: dialog stack, Goto Project, Create New Project, confirmations;
+                     addtask.go: Add Task (quick add, autocomplete, did-you-mean)
 internal/ui/view/    list views: one configurable List + a Spec per view (Today, Inbox, Upcoming,
                      Overdue, All, Completed, Archive, projects); duration/clock/day formatting
 internal/ui/theme/   Figma colour tokens, the dimmed theme, glyph sets (Unicode/ASCII)
@@ -40,6 +42,7 @@ internal/ui/gallery/ dev gallery (taskmoth --gallery) for comparing widgets with
 - **Dimming:** draw the view behind a dialog with `theme.Dimmed()`, then composite it with `widget.Overlay`. A component's own "dim" variant (completed tasks, the header clock) uses `theme.Fade` / `FadeOn`.
 - **Widths are terminal cells, not bytes or runes.** One Figma cell is 12×24 px. Truncate plain text with `widget.Truncate` before styling it, and lay out with `Fit` / `Spread`.
 - **Every rendered line must be exactly the target width.** The golden tests assert this.
+- **The quick-add grammar is PLAN.md Appendix A.** `TestAppendixA` is that table row for row. Change the grammar only through a gate, and update the appendix and the test together.
 
 ## Data conventions
 

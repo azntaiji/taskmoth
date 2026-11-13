@@ -1,10 +1,12 @@
 package widget
 
 import (
+	"image/color"
 	"strings"
 	"unicode"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/azntaiji/taskmoth/internal/ui/theme"
@@ -23,6 +25,8 @@ const PromptWidth = 2
 // in PLAN.md), so callers call InsertNewline themselves.
 type Input struct {
 	Placeholder string
+	// Highlights colour parts of the value; the caller keeps them in sync.
+	Highlights []Highlight
 	// Multiline keeps newlines from pastes and allows InsertNewline.
 	Multiline bool
 
@@ -32,6 +36,23 @@ type Input struct {
 	width   int // total width in cells, including the prompt
 	height  int // visible rows
 	top     int // first visible visual row
+}
+
+// Highlight colours runes [Start, End) of the value, e.g. tokens recognised
+// by the quick-add parser (decision G5.1a).
+type Highlight struct {
+	Start, End int
+	Fg         color.Color
+}
+
+// Cursor returns the cursor position as a rune offset into the value.
+func (in *Input) Cursor() int { return in.cursor }
+
+// SetValueCursor replaces the text and places the cursor.
+func (in *Input) SetValueCursor(s string, cursor int) {
+	in.SetValue(s)
+	in.cursor = min(max(cursor, 0), len(in.value))
+	in.scrollToCursor()
 }
 
 // SetValue replaces the text and moves the cursor to the end.
@@ -341,20 +362,43 @@ func (in *Input) View(t theme.Theme, field bool) string {
 		if r == 0 {
 			lead = prompt
 		}
-		var line string
-		if in.focused && r == curRow {
-			at := in.cursor
-			before := string(in.value[s.start:at])
-			line = textStyle.Render(before)
-			if at < s.end {
-				line += cursor.Render(string(in.value[at])) + textStyle.Render(string(in.value[at+1:s.end]))
-			} else {
-				line += cursor.Render(" ")
+		// Group runs of runes that share a style: plain text (-1), the
+		// cursor (-2), or highlight number h (h >= 0).
+		key := func(k int) int {
+			if in.focused && k == in.cursor {
+				return -2
 			}
-		} else {
-			line = textStyle.Render(string(in.value[s.start:s.end]))
+			if in.focused {
+				for h, hl := range in.Highlights {
+					if k >= hl.Start && k < hl.End {
+						return h
+					}
+				}
+			}
+			return -1
 		}
-		rows[i] = Fit(lead+line, w, fill)
+		styleOf := func(k int) lipgloss.Style {
+			switch k {
+			case -1:
+				return textStyle
+			case -2:
+				return cursor
+			}
+			return t.Style(in.Highlights[k].Fg, bg)
+		}
+		var b strings.Builder
+		for k := s.start; k < s.end; {
+			j, kk := k+1, key(k)
+			for j < s.end && key(j) == kk {
+				j++
+			}
+			b.WriteString(styleOf(kk).Render(string(in.value[k:j])))
+			k = j
+		}
+		if in.focused && r == curRow && in.cursor == s.end {
+			b.WriteString(cursor.Render(" "))
+		}
+		rows[i] = Fit(lead+b.String(), w, fill)
 	}
 	return strings.Join(rows, "\n")
 }
