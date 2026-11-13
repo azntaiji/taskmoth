@@ -12,12 +12,17 @@ taskmoth is a keyboard-driven TUI task manager in Go (Bubble Tea v2, Lip Gloss v
 - **Don't expand scope.** Time tracking and analytics are future features (PLAN.md §7).
 - **Ship tests with code.** Keep the pure packages (`task`, `nlp`) free of UI and storage imports, and pass the current time in as a parameter rather than calling `time.Now()`.
 - **Quit keys are `ctrl+c` and `ctrl+q`.** `q` is "add task".
+- Use Semantic Versioning 2.0.0 for versioning.
 
 ## Layout
 
 ```
-cmd/taskmoth/        entry point and flags (--data, --ascii, --gallery)
+cmd/taskmoth/        entry point and flags (--data, --ascii, --gallery, --seed, --list)
 internal/paths/      XDG data/config directory resolution
+internal/task/       domain model, validation, view filters, sort orders (pure)
+internal/store/      Store interface; SQLite implementation + embedded migrations;
+                     in-memory implementation for UI tests (both pass the same contract tests)
+internal/seed/       sample data from the designs (taskmoth --seed)
 internal/ui/         Bubble Tea models (root App in app.go)
 internal/ui/theme/   Figma colour tokens, the dimmed theme, glyph sets (Unicode/ASCII)
 internal/ui/widget/  widgets built from the Figma Components page (header, status bar,
@@ -32,6 +37,13 @@ internal/ui/gallery/ dev gallery (taskmoth --gallery) for comparing widgets with
 - **Dimming:** draw the view behind a dialog with `theme.Dimmed()`, then composite it with `widget.Overlay`. A component's own "dim" variant (completed tasks, the header clock) uses `theme.Fade` / `FadeOn`.
 - **Widths are terminal cells, not bytes or runes.** One Figma cell is 12×24 px. Truncate plain text with `widget.Truncate` before styling it, and lay out with `Fit` / `Spread`.
 - **Every rendered line must be exactly the target width.** The golden tests assert this.
+
+## Data conventions
+
+- **Schema changes are new migrations.** Add `internal/store/migrations/NNNN_name.sql`, numbered consecutively. Never edit a migration that has shipped. Changing the schema is a gate (decision G2.4 set version 1).
+- **Every `Store` implementation must pass the contract tests** in `internal/store/store_test.go`. Add new behaviour there, so SQLite and Memory stay in sync.
+- **Dates and times:** dates are `task.Date` (local, `YYYY-MM-DD`). Timestamps are stored as UTC. Never call `time.Now()` in `task`; pass `today` in. The store's clock is injectable through `store.Options`.
+- **Don't experiment on the real database.** For `--seed` and `--list`, always pass `--data` pointing to a scratch directory.
 
 PLAN.md §4 describes the full target layout.
 
@@ -56,3 +68,4 @@ CI (`.github/workflows/ci.yml`) runs build, vet, and race-enabled tests on `ubun
 - `make check` passes.
 - Every gate you resolved is in the PLAN.md decision log.
 - AGENTS.md (layout and commands) and PLAN.md are updated if anything they describe changed.
+- README.md is kept up-to-date with: Shields badges, an overview of the application, key features, commands, and a section for developers/contributing. 

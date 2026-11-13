@@ -201,12 +201,14 @@ Principles:
 
 **Gates:**
 
-- **G4.1 Upcoming.** "Due within the next 7 days": include today? include overdue? Group by day with headers, or flat list with date badges? *Recommend tomorrow through +7 days, flat, sorted by due date by default.*
+- **G4.1 Upcoming layout.** Which tasks appear is settled by G2.1c-upcoming. Remaining: group by day with headers, or a flat list with date badges? Default sort? *Recommend flat, sorted by the earlier of start and due date.*
 - **G4.2 All / Completed.** Does All include completed tasks? Does Completed show completion date in place of the due badge, and does `space` there un-complete? Default sort for Completed (*recommend most recently completed first*).
 - **G4.3 Overdue badge style.** The word `overdue` (Today frame) or the red date (project frame)? *Assumed: date-relative views use words, other views use dates* — confirm.
 - **G4.4 Deleting a project** (`x` in Goto Project): delete its tasks, or move them to Inbox? What about its completed tasks? *Recommend move open tasks to Inbox, with the confirmation dialog stating the count.*
 - **G4.5 Key hints.** Add `g c` to the bottom hints (currently absent)? How should hint rows degrade when they overflow the width, as the Goto Project hint line does?
 - **G4.6 Empty states.** Copy for each empty view and for "no projects yet".
+- **G4.7 Trash access.** G2.3 chose a trash, which the designs don't include. How do you view trashed tasks (e.g. a `g` chord to a Trash list view), restore them, and permanently delete one? Does the Delete dialog's wording change to "Move to trash?"
+- **G4.8 Emptying the trash.** Never automatically, after N days (e.g. 30), or only on an explicit "empty trash" action? Is permanent deletion confirmed with a dialog?
 
 **Work:** Goto Project dialog (`g p`) with scroll, `n` new, `x` delete; Create New Project dialog with validation errors; Delete confirmation dialog (reused for tasks, `x` in lists); project list view; Upcoming, Overdue (`g u`, `g o`) from the Today configuration; All, Completed (`g a`, `g c`) from the project-list configuration.
 
@@ -300,7 +302,7 @@ Principles:
 
 Not to be built now, but keep the door open:
 
-- **Task time tracking** — start/stop timers per task, actual vs estimated duration. Implication now: keep duration stored as minutes and keep `completed_at`.
+- **Task time tracking** — start/stop timers per task, actual vs estimated duration. Implication now: keep duration stored as minutes and keep `completed_at`. Storage plan (G2.4): a separate `time_entries(id, task_id → tasks.id, started_at, ended_at)` table added by a new migration, many entries per task, not a column on `tasks`.
 - **Task and project analytics** — completion rates, time per project, trends. Implication now: keep timestamps on tasks and prefer a queryable store.
 - **Theme support** — user-selectable colour themes (e.g. files in `~/.config/taskmoth/themes/` mapping Figma token names to colours), possibly including a light theme and a theme that follows the terminal's own ANSI palette. Implication now: every colour goes through `theme.Colors` (named after its Figma variable); views never construct colours. A terminal-palette theme can't use pre-blended dimming (G1.4) because its RGB values are unknown, so it would need the faint attribute instead.
 
@@ -327,3 +329,10 @@ Record every gate outcome here before proceeding.
 | G1.5 | **Proportional scrollbar thumb, hidden when everything fits.** The thumb's size reflects visible/total and it moves between the first and last track cells (as in Figma). When the whole list fits, only the track shows. | 2026-11-12 | Raised during Phase 1. Figma shows a fixed 3-row thumb, which is a static mock. |
 | G1.6 | **The ASCII truncation tail is `...`**, counted inside the truncated width. | 2026-11-12 | Raised during Phase 1. G1.3b did not cover `…`. |
 | G1.7 | **The theme mirrors Figma's two colour layers, drawn as 24-bit RGB from the Dracula palette.** `theme.Palette` holds the 16 ANSI slots plus `base/fg` and `base/bg`. `theme.Semantic` resolves every semantic token to a slot exactly as Figma aliases it. Colours are sent as RGB, not ANSI indices, so the app looks the same in every terminal and dimming can blend real colours (G1.4). | 2026-11-12 | Supersedes the Phase 1 approach of copying resolved hex values. A palette that follows the terminal's own ANSI colours is a future theme (§7) and would need faint-attribute dimming. |
+| G2.1a | **Priority is required, P1–P4, defaulting to P4.** There is no "unset". Tasks created without `!p` are P4. | 2026-11-12 | The Inbox design's missing badge is a property of that view's one-line row style, not of the data. |
+| G2.1b | **Start and due dates are date-only**: local calendar dates (`YYYY-MM-DD`). "Today" and "overdue" use the local date. | 2026-11-12 | |
+| G2.1c | **Start dates are shown and sortable, and also decide list membership.** **Today** = open tasks that are due today, overdue, or have a start date of today or earlier. **Upcoming** = open tasks whose start or due date falls between tomorrow and 7 days ahead. A task can be in both. | 2026-11-12 | The operator asked for start-date behaviour, then chose from the options presented. Long-running started tasks stay in Today until done. This supersedes the "which tasks" parts of G3.1 and G4.1. |
+| G2.1d | **Task names are single-line.** | 2026-11-12 | Edit Name's `shift + enter newline` hint is to be dropped (confirm at G6.2). |
+| G2.2 | **Project names are lowercase slugs** (`a–z`, `0–9`, `-`, `_`), unique, and displayed as `#name`. Typed capitals are lowercased. **Pickers list projects A–Z.** | 2026-11-12 | |
+| G2.3 | **Completing records `completed_at`; un-completing clears it. Deleting a task moves it to a trash** (`deleted_at`) rather than removing it. | 2026-11-12 | The trash isn't in the designs. How to view, restore and empty it is gated at G4.7 and G4.8. |
+| G2.4 | **Schema approved with UUIDv7 IDs.** One SQLite file, `<data dir>/taskmoth.db`, opened with WAL, foreign keys and a busy timeout; version kept in `PRAGMA user_version`. **`projects`**: `id`, `name` (unique slug), `created_at`, `updated_at`. **`tasks`**: `id`, `name` (single line), `description` (`''` = none), `project_id` (NULL = Inbox; `ON DELETE RESTRICT` until G4.4), `priority` (1–4, default 4), `start_date` and `due_date` (local `YYYY-MM-DD`), `duration_minutes`, `created_at`, `updated_at`, `completed_at`, `deleted_at`. IDs are UUIDv7 text; timestamps are UTC RFC 3339. | 2026-11-12 | Time tracking is not in the schema. It will be its own `time_entries` table (many per task), added by a later migration (§7). |
