@@ -1,0 +1,24 @@
+taskmoth ▸ Task                                        tues · 2026-11-10 · 15:26
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ Get eggs                                                                    ││
+│                                                                             ││
+│ #groceries                                                                  ││
+│                                                                             ││
+│  P3    overdue   s:2026-11-09  ~15m                                         ││
+│         ┌─ Edit Priority ──────────────────────────────────────────┐        ││
+│ Descript│                                                          │        ││
+│ I need t│ Select a priority from the below options or select and   │uff on  ││
+│ the list│ save with the 1-4 key:                                   │        ││
+│         │                                                          │        ││
+│ Reach ou│    P1     P2  ▶  P3     P4                               │        ││
+│         │                                                          │        ││
+│         │ ← / → select  enter save  esc cancel                     │        ││
+│         └──────────────────────────────────────────────────────────┘        ││
+│                                                                             ││
+│                                                                             ││
+│                                                                             ││
+│                                                                             ││
+│                                                                             ││
+└──────────────────────────────────────────────────────────────────────────────┘
+ ↑ / ↓ scroll  space done  esc return to list  x archive  n name                
+ p priority  v project  r start date  t due date  y duration  d description     

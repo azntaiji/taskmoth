@@ -43,10 +43,12 @@ type App struct {
 	current     *view.List
 
 	dialogs             []dialog
-	selectAfterLoad     task.ID // project to select in Goto Project once reloaded
-	selectTaskAfterLoad task.ID // task to select in the current view once reloaded
-	pendingG            bool    // `g` pressed, waiting for the second key (G3.4: no timeout)
-	message             string  // notice or error in the status bar until the next key
+	selectAfterLoad     task.ID   // project to select in Goto Project once reloaded
+	selectTaskAfterLoad task.ID   // task to select in the current view once reloaded
+	taskView            *taskView // the Single Task view, when open
+	keyDisambiguation   bool      // the terminal reports shift+enter apart from enter (G6.2)
+	pendingG            bool      // `g` pressed, waiting for the second key (G3.4: no timeout)
+	message             string    // notice or error in the status bar until the next key
 }
 
 // NewApp returns the root model. now supplies the current time (injected so
@@ -209,6 +211,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tea.KeyPressMsg:
 		return a, a.handleKey(msg)
+	case tea.KeyboardEnhancementsMsg:
+		a.keyDisambiguation = msg.SupportsKeyDisambiguation()
 	case taskAddedMsg:
 		a.pop() // the Add Task dialog
 		a.message = fmt.Sprintf("Added %s.", quote(a.theme, msg.t.Name))
@@ -259,11 +263,15 @@ func (a *App) applyLoad(msg loadedMsg) {
 	}
 	a.refresh()
 	if a.selectAfterLoad != "" {
-		if g, ok := a.topDialog().(*gotoDialog); ok {
-			g.selectProject(a, a.selectAfterLoad)
+		switch d := a.topDialog().(type) {
+		case *gotoDialog:
+			d.selectProject(a, a.selectAfterLoad)
+		case *editProjectDialog: // G6.8
+			d.selectProject(a, a.selectAfterLoad)
 		}
 		a.selectAfterLoad = ""
 	}
+	a.syncTaskView()
 	if a.selectTaskAfterLoad != "" {
 		a.current.Select(a.selectTaskAfterLoad) // G5.4: if it's in this view
 		a.selectTaskAfterLoad = ""
@@ -322,6 +330,9 @@ func (a *App) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 	}
 
 	key := msg.String()
+	if a.taskView != nil {
+		return a.handleTaskViewKey(key)
+	}
 	if a.pendingG {
 		a.pendingG = false
 		switch key {
@@ -343,7 +354,15 @@ func (a *App) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 
 	l := a.current
 	archive := l.Spec.Kind == view.Archive
+	if open, ok := editKeys[key]; ok && !archive { // G6.6: edit keys work on the selected row
+		if t, ok := l.Selected(); ok {
+			a.push(open(a, t))
+		}
+		return nil
+	}
 	switch key {
+	case "e":
+		a.openTaskView()
 	case "q":
 		a.push(newAddTaskDialog(l.Spec.Project)) // G5.4: a project list defaults to its project
 	case "g":
@@ -399,6 +418,11 @@ func (a *App) toggleDone() tea.Cmd {
 	if !ok {
 		return nil
 	}
+	return a.setDone(t)
+}
+
+// setDone completes an open task or reopens a completed one.
+func (a *App) setDone(t task.Task) tea.Cmd {
 	s := a.store
 	return func() tea.Msg {
 		if _, err := s.SetDone(context.Background(), t.ID, !t.Done()); err != nil {
@@ -451,6 +475,9 @@ func (a *App) render() string {
 }
 
 func (a *App) renderView(t theme.Theme) string {
+	if a.taskView != nil {
+		return a.renderTaskView(t)
+	}
 	l := a.current
 	lines := []string{widget.Header(t, a.width, l.Spec.Title, view.Clock(t, a.clock))}
 	if a.loaded {

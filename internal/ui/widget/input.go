@@ -57,9 +57,7 @@ func (in *Input) SetValueCursor(s string, cursor int) {
 
 // SetValue replaces the text and moves the cursor to the end.
 func (in *Input) SetValue(s string) {
-	if !in.Multiline {
-		s = flattenNewlines(s)
-	}
+	s = CleanText(s, in.Multiline)
 	in.value = []rune(s)
 	in.cursor = len(in.value)
 	in.scrollToCursor()
@@ -99,11 +97,7 @@ func (in *Input) Update(msg tea.Msg) bool {
 	}
 	switch msg := msg.(type) {
 	case tea.PasteMsg:
-		s := strings.ReplaceAll(msg.Content, "\r\n", "\n")
-		if !in.Multiline {
-			s = flattenNewlines(s)
-		}
-		in.insert([]rune(s))
+		in.insert([]rune(CleanText(msg.Content, in.Multiline)))
 		return true
 	case tea.KeyPressMsg:
 		return in.handleKey(msg)
@@ -148,7 +142,7 @@ func (in *Input) handleKey(msg tea.KeyPressMsg) bool {
 			msg.Mod.Contains(tea.ModSuper) || msg.Mod.Contains(tea.ModMeta) {
 			return false
 		}
-		in.insert([]rune(msg.Text))
+		in.insert([]rune(CleanText(msg.Text, false)))
 		return true
 	}
 	in.scrollToCursor()
@@ -403,7 +397,20 @@ func (in *Input) View(t theme.Theme, field bool) string {
 	return strings.Join(rows, "\n")
 }
 
-// flattenNewlines replaces line breaks with spaces for single-line inputs.
-func flattenNewlines(s string) string {
-	return strings.NewReplacer("\r\n", " ", "\n", " ", "\r", " ").Replace(s)
+// CleanText makes text safe to draw. Line breaks (\r\n, \r — terminals
+// often paste newlines as \r — and \n) become \n, or a space when multiline
+// is false; tabs become a space; other control characters are dropped. A
+// stray \r or escape would move the terminal's cursor and break the layout.
+func CleanText(s string, multiline bool) string {
+	nl := "\n"
+	if !multiline {
+		nl = " "
+	}
+	s = strings.NewReplacer("\r\n", nl, "\r", nl, "\n", nl, "\t", " ").Replace(s)
+	return strings.Map(func(r rune) rune {
+		if r != '\n' && (r < 0x20 || (r >= 0x7f && r < 0xa0)) {
+			return -1
+		}
+		return r
+	}, s)
 }

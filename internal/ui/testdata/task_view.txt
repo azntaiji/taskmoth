@@ -1,0 +1,24 @@
+taskmoth ▸ Task                                        tues · 2026-11-10 · 15:26
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ Get eggs                                                                    ││
+│                                                                             ││
+│ #groceries                                                                  ││
+│                                                                             ││
+│  P3    overdue   s:2026-11-09  ~15m                                         ││
+│                                                                             ││
+│ Description                                                                 ││
+│ I need to goto trader joe's to get eggs. Also get the rest of the stuff on  ││
+│ the list.                                                                   ││
+│                                                                             ││
+│ Reach out to Hope if she needs anything that isn't on the list.             ││
+│                                                                             ││
+│                                                                             ││
+│                                                                             ││
+│                                                                             ││
+│                                                                             ││
+│                                                                             ││
+│                                                                             ││
+│                                                                             ││
+└──────────────────────────────────────────────────────────────────────────────┘
+ ↑ / ↓ scroll  space done  esc return to list  x archive  n name                
+ p priority  v project  r start date  t due date  y duration  d description     

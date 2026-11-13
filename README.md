@@ -8,7 +8,7 @@
 
 A keyboard-driven task manager for the terminal, built with [Bubble Tea](https://github.com/charmbracelet/bubbletea).
 
-> **Status: in development.** You can add tasks with natural-language quick add, and browse, sort, complete, archive and organize them across every list view (phases 0–5 of [PLAN.md](PLAN.md)). Editing a task's fields, and search, come in later phases.
+> **Status: in development.** You can add tasks with natural-language quick add, view and edit every field, and browse, sort, complete, archive and organize tasks across every list view (phases 0–6 of [PLAN.md](PLAN.md)). Search and the shortcuts overlay come next.
 
 ## Features
 
@@ -18,12 +18,16 @@ Implemented:
   - Example: `Change the laundry #chores tomorrow ~30m p2 s:monday`.
   - Recognised parts are highlighted as you type, with a preview line of the result.
   - Project names autocomplete, and a typo like `#chors` asks "Did you mean #chores?".
+- **Task view and editing**:
+  - `e` opens a task with its description.
+  - Single keys edit any field, from the task view or straight from a list: name, description, project, start date, due date, duration and priority.
+  - Dates and durations accept natural language (`next monday`, `1.5h`).
 - **List views**:
   - **Today**: due, overdue, or already started.
   - **Upcoming**: the next 7 days, grouped by day.
   - **Overdue**, **Inbox**, **All**, **Completed**, the **Archive**, and one list per **project**.
 - **Rows and status**:
-  - Two-line task rows with priority and due badges; the Inbox uses one-line rows.
+  - Two-line task rows with priority and due badges, duration and start date.
   - A live clock in the header.
   - A status bar with task count, total and remaining time, and the current sort.
 - **Projects** named as `#slugs`:
@@ -38,7 +42,7 @@ Implemented:
 
 Planned (see [PLAN.md](PLAN.md)):
 
-- Editing tasks, search, and a keyboard shortcuts overlay.
+- Search and a keyboard shortcuts overlay.
 - Later: recurring tasks, times of day, user themes, time tracking, analytics.
 
 ## Install
@@ -65,6 +69,8 @@ Quit with `ctrl+q` or `ctrl+c`. (`q` will be "add task".)
 | `pgup`/`pgdn` | move by a page |
 | `home`/`end`, `g g`/`G` | jump to top/bottom |
 | `q` | add a task (quick add; see below) |
+| `e` | open the selected task (`esc` returns to the list) |
+| `n` `d` `v` `r` `t` `y` `p` | edit name, description, project, start date, due date, duration, priority |
 | `space` | complete / reopen the selected task |
 | `s` | cycle the sort (priority → due → start → duration → name) |
 | `x` | archive the selected task (in the Archive: delete forever) |
@@ -73,7 +79,7 @@ Quit with `ctrl+q` or `ctrl+c`. (`q` will be "add task".)
 | `g p` | Goto Project: `enter` open, `n` new project, `x` archive, `u` unarchive |
 | `esc` | cancel a pending `g` or close a dialog |
 
-Dialogs use `←`/`→` to choose a button and `enter` to confirm. The bottom hint rows also show keys from the designs that later phases will make work (`e`, `?`, `/`).
+Dialogs use `←`/`→` to choose a button and `enter` to confirm. In edit dialogs, an empty value clears the field (`no date` also clears a date), and Edit Project's "Inbox" entry removes the project. In Edit Description, `shift+enter` (where the terminal supports it), `alt+enter` or `ctrl+j` adds a line break. The bottom hint rows also show keys from the designs that a later phase will make work (`?`, `/`).
 
 ### Quick add
 

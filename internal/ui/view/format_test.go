@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/azntaiji/taskmoth/internal/task"
 	"github.com/azntaiji/taskmoth/internal/ui/theme"
 )
 
@@ -38,5 +39,34 @@ func TestClock(t *testing.T) {
 	}
 	if got := Clock(uni, time.Date(2026, 1, 2, 0, 7, 0, 0, time.UTC)); got[len(got)-5:] != "00:07" {
 		t.Errorf("24h time: %q", got)
+	}
+}
+
+func TestInboxNote(t *testing.T) {
+	d := func(s string) task.Date { x, _ := task.ParseDate(s); return x }
+	day := d("2026-11-13")
+	if first := InboxNote(day); InboxNote(d(day.String())) != first {
+		t.Error("the note must stay the same all day")
+	}
+	seen := map[string]bool{}
+	start := d("2026-01-01")
+	for i := range 60 {
+		seen[InboxNote(start.AddDays(i))] = true
+	}
+	if len(seen) < 10 {
+		t.Errorf("only %d different notes over 60 days", len(seen))
+	}
+	if len(todayDoneNotes) < 10 || TodayDoneNote(day) == "" {
+		t.Error("Today needs its own notes")
+	}
+	for _, n := range todayDoneNotes {
+		if len(n) > 50 { // badge and s:priority share the 80-column status bar
+			t.Errorf("Today note too long for the status bar: %q", n)
+		}
+	}
+	for _, n := range inboxNotes {
+		if len(n) > 60 {
+			t.Errorf("note too long for 80 columns: %q", n)
+		}
 	}
 }

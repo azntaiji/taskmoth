@@ -1,0 +1,24 @@
+taskmoth ▸ Task                                        tues · 2026-11-10 · 15:26
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ Get eggs                                                                    ││
+│                                                                             ││
+│ #groceri┌─ Edit Project ───────────────────────────────────────────┐        ││
+│         │                                                         ││        ││
+│  P3    o│ Select a project:                                       ││        ││
+│         │                                                         ││        ││
+│ Descript│   Inbox                                                 ││        ││
+│ I need t│ ▶ #groceries                                            ││uff on  ││
+│ the list│   #homelab-tech                                         ││        ││
+│         │   #movies-tv                                            ││        ││
+│ Reach ou│   #oneofftasks                                          ││        ││
+│         │   #parenting                                            ││        ││
+│         │   #reminders                                            ││        ││
+│         │                                                         ││        ││
+│         │                                                         ││        ││
+│         │ ↑ / ↓ select  enter save  esc cancel  n new             ││        ││
+│         └──────────────────────────────────────────────────────────┘        ││
+│                                                                             ││
+│                                                                             ││
+└──────────────────────────────────────────────────────────────────────────────┘
+ ↑ / ↓ scroll  space done  esc return to list  x archive  n name                
+ p priority  v project  r start date  t due date  y duration  d description     

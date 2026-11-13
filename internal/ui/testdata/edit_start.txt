@@ -1,0 +1,24 @@
+taskmoth ▸ Task                                        tues · 2026-11-10 · 15:26
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ Get eggs                                                                    ││
+│                                                                             ││
+│ #groceries                                                                  ││
+│                                                                             ││
+│  P3    overdue   s:2026-11-09  ~15m                                         ││
+│         ┌─ Edit Start date ────────────────────────────────────────┐        ││
+│ Descript│                                                          │        ││
+│ I need t│ Enter date in YYYY-MM-DD format or use natural language. │uff on  ││
+│ the list│ Examples: 2026-11-02, today, in 3 days, next monday      │        ││
+│         │                                                          │        ││
+│ Reach ou│ > 2026-11-09                                             │        ││
+│         │                                                          │        ││
+│         │ enter save  esc cancel                                   │        ││
+│         └──────────────────────────────────────────────────────────┘        ││
+│                                                                             ││
+│                                                                             ││
+│                                                                             ││
+│                                                                             ││
+│                                                                             ││
+└──────────────────────────────────────────────────────────────────────────────┘
+ ↑ / ↓ scroll  space done  esc return to list  x archive  n name                
+ p priority  v project  r start date  t due date  y duration  d description     

@@ -28,7 +28,8 @@ internal/store/      Store interface; SQLite implementation + embedded migration
 internal/seed/       sample data from the designs (taskmoth --seed)
 internal/ui/         root Bubble Tea model (app.go): store, clock, key chords, view switching;
                      dialogs.go: dialog stack, Goto Project, Create New Project, confirmations;
-                     addtask.go: Add Task (quick add, autocomplete, did-you-mean)
+                     addtask.go: Add Task (quick add, autocomplete, did-you-mean);
+                     taskview.go: Single Task view; edit.go: the field edit dialogs
 internal/ui/view/    list views: one configurable List + a Spec per view (Today, Inbox, Upcoming,
                      Overdue, All, Completed, Archive, projects); duration/clock/day formatting
 internal/ui/theme/   Figma colour tokens, the dimmed theme, glyph sets (Unicode/ASCII)

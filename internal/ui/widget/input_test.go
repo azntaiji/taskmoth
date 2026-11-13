@@ -97,9 +97,13 @@ func TestInputPaste(t *testing.T) {
 	}
 	ml := newInput(40, 3)
 	ml.Multiline = true
-	ml.Update(tea.PasteMsg{Content: "line one\r\nline two"})
-	if ml.Value() != "line one\nline two" {
+	ml.Update(tea.PasteMsg{Content: "line one\r\nline two\rline\tthree\x1b[31m"})
+	if ml.Value() != "line one\nline two\nline three[31m" {
 		t.Errorf("multi-line paste = %q", ml.Value())
+	}
+	in.SetValue("a\rb")
+	if in.Value() != "a b" {
+		t.Errorf("SetValue = %q", in.Value())
 	}
 	in.InsertNewline()
 	if strings.Contains(in.Value(), "\n") {

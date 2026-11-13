@@ -1,0 +1,24 @@
+taskmoth ▸ Task                                        tues · 2026-11-10 · 15:26
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ Get eggs                                                                    ││
+│                                                                             ││
+│ #groceries                                                                  ││
+│                                                                             ││
+│  P3    overdue   s:2026-11-09  ~15m                                         ││
+│         ┌─ Edit Name ──────────────────────────────────────────────┐        ││
+│ Descript│                                                         ││        ││
+│ I need t│ Edit task name:                                         ││uff on  ││
+│ the list│                                                         ││        ││
+│         │ > Get eggs                                              ││        ││
+│ Reach ou│                                                         ││        ││
+│         │                                                         ││        ││
+│         │                                                         ││        ││
+│         │ enter save  esc cancel                                  ││        ││
+│         └──────────────────────────────────────────────────────────┘        ││
+│                                                                             ││
+│                                                                             ││
+│                                                                             ││
+│                                                                             ││
+└──────────────────────────────────────────────────────────────────────────────┘
+ ↑ / ↓ scroll  space done  esc return to list  x archive  n name                
+ p priority  v project  r start date  t due date  y duration  d description     

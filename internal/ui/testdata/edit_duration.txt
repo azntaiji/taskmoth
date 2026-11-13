@@ -1,0 +1,24 @@
+taskmoth ▸ Task                                        tues · 2026-11-10 · 15:26
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ Get eggs                                                                    ││
+│                                                                             ││
+│ #groceries                                                                  ││
+│                                                                             ││
+│  P3   ~15m                                                                  ││
+│         ┌─ Edit Duration ──────────────────────────────────────────┐        ││
+│ Descript│                                                          │        ││
+│ I need t│ Enter duration in minutes, decimal hours or use natural  │uff on  ││
+│ the list│ language. Examples: 30m, 1.5h, 2 hours, 10 minutes       │        ││
+│         │                                                          │        ││
+│ Reach ou│ > 15m                                                    │        ││
+│         │                                                          │        ││
+│         │ enter save  esc cancel                                   │        ││
+│         └──────────────────────────────────────────────────────────┘        ││
+│                                                                             ││
+│                                                                             ││
+│                                                                             ││
+│                                                                             ││
+│                                                                             ││
+└──────────────────────────────────────────────────────────────────────────────┘
+ ↑ / ↓ scroll  space done  esc return to list  x archive  n name                
+ p priority  v project  r start date  t due date  y duration  d description     

@@ -62,6 +62,12 @@ func keyText(s string) tea.KeyPressMsg {
 		return tea.KeyPressMsg{Code: tea.KeyBackspace}
 	case "ctrl+t":
 		return tea.KeyPressMsg{Code: 't', Mod: tea.ModCtrl}
+	case "ctrl+u":
+		return tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl}
+	case "ctrl+j":
+		return tea.KeyPressMsg{Code: 'j', Mod: tea.ModCtrl}
+	case "alt+enter":
+		return tea.KeyPressMsg{Code: tea.KeyEnter, Mod: tea.ModAlt}
 	case "ctrl+q":
 		return tea.KeyPressMsg{Code: 'q', Mod: tea.ModCtrl}
 	case "ctrl+c":
@@ -233,22 +239,38 @@ func TestInboxMatchesDesign(t *testing.T) {
 	if !strings.HasPrefix(lines[0], "taskmoth ▸ Inbox") {
 		t.Errorf("header = %q", lines[0])
 	}
-	// One-line rows (Figma 40:18095), name at column 7, A–Z under the default
-	// priority sort since all are P4.
+	// Standard two-line rows (G6.11), A–Z under the default priority sort
+	// since all are P4.
 	want := []string{"Citizen sleeper", "More graphic novels", "Pacific drive", "Sable", "Season a letter to the future", "Try Godot exercise"}
 	for i, name := range want {
-		row := lines[2+2*i]
-		if row[7:7+len(name)] != name && !strings.Contains(row, name) {
+		if row := lines[2+3*i]; !strings.Contains(row, "P4  "+name) {
 			t.Errorf("row %d = %q, want %q", i, row, name)
-		}
-		if idx := strings.Index(row, name); idx != 7+2 && idx != 7 { // "▶ " is 2 bytes wider than 2 cells
-			t.Errorf("%q starts at byte %d", name, idx)
 		}
 	}
 	if !strings.HasPrefix(lines[21], "  Inbox   6 tasks to organize") || strings.Contains(lines[21], "s:") {
 		t.Errorf("status = %q", lines[21])
 	}
 	golden(t, "inbox", a.View().Content)
+}
+
+// G6.11: Inbox rows show the due badge, ~duration and s:start, but no project.
+func TestInboxShowsDatesAndDuration(t *testing.T) {
+	clk := &clock{}
+	s := store.NewMemory(store.Options{Now: clk.Now})
+	if _, err := s.CreateTask(context.Background(), task.Task{Name: "Call the bank", Priority: task.P2,
+		Due: date("2026-11-14"), Start: date("2026-11-12"), DurationMin: 30}); err != nil {
+		t.Fatal(err)
+	}
+	a := newApp(t, s, clk, 80, 24)
+	press(a, "g", "i")
+	assertScreen(t, a, 80, 24)
+	lines := screen(a)
+	if !strings.Contains(lines[2], "P2  Call the bank") || !strings.HasSuffix(strings.TrimRight(lines[2], " │"), "2026-11-14") {
+		t.Errorf("line 1 = %q", lines[2])
+	}
+	if !strings.Contains(lines[3], "~30m") || !strings.Contains(lines[3], "s:2026-11-12") || strings.Contains(lines[3], "#") {
+		t.Errorf("line 2 = %q", lines[3])
+	}
 }
 
 func selectedName(a *App) string {
@@ -405,6 +427,12 @@ func TestEmptyStatesAndBigTerminal(t *testing.T) {
 	if !strings.Contains(screen(a)[2], "Inbox is empty.") {
 		t.Errorf("empty Inbox = %q", screen(a)[2])
 	}
+	// G6.12: the day's note sits one blank line below, and changes with the day.
+	note := view.InboxNote(task.DateOf(designNow))
+	if !strings.Contains(screen(a)[4], note) {
+		t.Errorf("note row = %q, want %q", screen(a)[4], note)
+	}
+	assertScreen(t, a, 120, 40)
 }
 
 func TestScrollsLongLists(t *testing.T) {
@@ -455,5 +483,35 @@ func TestTooSmall(t *testing.T) {
 	}
 	if !a.View().AltScreen {
 		t.Error("View should request the alternate screen")
+	}
+}
+
+// G6.14: once every task in Today is done, the day's note replaces the
+// status bar summary; it goes away when a task is reopened.
+func TestTodayAllDoneNote(t *testing.T) {
+	clk := &clock{t: designNow}
+	s := store.NewMemory(store.Options{Now: clk.Now})
+	for _, n := range []string{"Water plants", "Stretch"} {
+		if _, err := s.CreateTask(context.Background(), task.Task{Name: n, Due: date("2026-11-10")}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	a := newApp(t, s, clk, 80, 24)
+	note := view.TodayDoneNote(task.DateOf(designNow))
+	press(a, "space")
+	if !strings.Contains(screen(a)[21], "1/2 tasks") {
+		t.Fatalf("the summary stays until every task is done: %q", screen(a)[21])
+	}
+	press(a, "k", "space") // the done task moved below the open one, still selected
+	assertScreen(t, a, 80, 24)
+	if bar := screen(a)[21]; !strings.HasPrefix(bar, "  Today   "+note) || !strings.HasSuffix(bar, "s:priority ") {
+		t.Errorf("status = %q, want the note %q", bar, note)
+	}
+	if strings.Contains(strings.Join(screen(a)[:21], "\n"), note) {
+		t.Error("the note belongs in the status bar only")
+	}
+	press(a, "space")
+	if strings.Contains(screen(a)[21], note) {
+		t.Error("reopening a task should bring back the summary")
 	}
 }

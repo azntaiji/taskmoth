@@ -33,9 +33,6 @@ type Spec struct {
 	Title   string  // header section and status badge
 	// Key names the view in stored settings: "sort." + Key.
 	Key string
-	// OneLine draws one-line rows with no priority, badges or metadata
-	// (Inbox, Figma 40:18095). Otherwise rows are two lines (TaskItemv2).
-	OneLine bool
 	// ShowSort shows the sort at the right of the status bar.
 	ShowSort bool
 	// Select reports whether a task is listed.
@@ -52,6 +49,12 @@ type Spec struct {
 	// "q to add a task".
 	Empty     string
 	EmptyHint bool
+	// EmptyNote, if set, adds a muted line below the empty message, picked
+	// for the day (Inbox, G6.12).
+	EmptyNote func(today task.Date) string
+	// DoneNote, if set, replaces the status bar summary once every listed
+	// task is done, picked for the day (Today, G6.14).
+	DoneNote func(today task.Date) string
 	// Hints replaces the first key-hint row (Archive, G4.5a).
 	Hints []w.Hint
 }
@@ -69,11 +72,12 @@ func SpecFor(k Kind) Spec {
 	switch k {
 	case Inbox:
 		return Spec{
-			Kind: Inbox, Title: "Inbox", Key: "inbox", OneLine: true,
+			Kind: Inbox, Title: "Inbox", Key: "inbox",
 			Select:  openView(func(t task.Task, _ task.Date) bool { return task.InInbox(t) }),
+			Badge:   dueDateBadge, // G6.11: standard rows, not the one-line design
 			Cycle:   task.DefaultCycle,
 			Summary: inboxSummary,
-			Empty:   "Inbox is empty.", EmptyHint: true,
+			Empty:   "Inbox is empty.", EmptyHint: true, EmptyNote: InboxNote,
 		}
 	case Upcoming:
 		return Spec{
@@ -123,7 +127,7 @@ func SpecFor(k Kind) Spec {
 			Kind: Today, Title: "Today", Key: "today", ShowSort: true,
 			Select: openView(task.InToday), Badge: dueWordBadge,
 			Cycle: task.DefaultCycle, Summary: openSummary,
-			Empty: "Nothing due or started today.", EmptyHint: true,
+			Empty: "Nothing due or started today.", EmptyHint: true, DoneNote: TodayDoneNote,
 		}
 	}
 }
@@ -199,6 +203,10 @@ func dueWordBadge(t theme.Theme, tk task.Task, now time.Time) string {
 	}
 	return ""
 }
+
+// DueWordBadge is the Today-style due badge, also used by the Single Task
+// view (29:7123).
+func DueWordBadge(t theme.Theme, tk task.Task, now time.Time) string { return dueWordBadge(t, tk, now) }
 
 // dueDateBadge: always the date, coloured by state (Upcoming, All, projects).
 func dueDateBadge(t theme.Theme, tk task.Task, now time.Time) string {
@@ -283,12 +291,8 @@ func (l *List) order() {
 	l.reselect()
 }
 
-func (l *List) itemHeight() int {
-	if l.Spec.OneLine {
-		return 2
-	}
-	return 3
-}
+// rowHeight is a task row's height: a blank spacer and two lines.
+const rowHeight = 3
 
 // layout places rows (and day headers) on lines; each block starts with a
 // blank line.
@@ -304,8 +308,8 @@ func (l *List) layout() {
 				line += 2
 			}
 		}
-		l.blocks = append(l.blocks, block{row: i, start: line, height: l.itemHeight()})
-		line += l.itemHeight()
+		l.blocks = append(l.blocks, block{row: i, start: line, height: rowHeight})
+		line += rowHeight
 	}
 	l.lines = line
 }
@@ -357,7 +361,7 @@ func (l *List) Select(id task.ID) {
 func (l *List) Move(d int) { l.setSel(l.sel + d) }
 
 // Page moves the selection by about a screenful in direction d (±1).
-func (l *List) Page(d int) { l.setSel(l.sel + d*max(l.height/l.itemHeight(), 1)) }
+func (l *List) Page(d int) { l.setSel(l.sel + d*max(l.height/rowHeight, 1)) }
 
 // Top selects the first row; Bottom the last.
 func (l *List) Top()    { l.setSel(0) }
@@ -422,6 +426,10 @@ func (l *List) Body(t theme.Theme, width int, projects map[task.ID]string, now t
 				base.Render(" ") + t.Style(t.C.KeyLabel, t.C.Bg).Render("to add a task")
 		}
 		lines[1] = msg
+		if l.Spec.EmptyNote != nil && l.height > 3 {
+			note := l.Spec.EmptyNote(task.DateOf(now))
+			lines[3] = w.Blank(base, w.MarkerWidth) + muted.Render(w.Truncate(t, note, bw-w.MarkerWidth))
+		}
 	}
 	for _, b := range l.blocks {
 		if b.start+b.height <= l.topLine || b.start >= l.topLine+l.height {
@@ -449,6 +457,16 @@ func (l *List) Body(t theme.Theme, width int, projects map[task.ID]string, now t
 	return out
 }
 
+// allDone reports whether the list has rows and all of them are done.
+func (l *List) allDone() bool {
+	for _, t := range l.rows {
+		if !t.Done() {
+			return false
+		}
+	}
+	return len(l.rows) > 0
+}
+
 // renderRow draws one task (Figma TaskItemv2, 14:1199): marker, checkbox,
 // priority, name and badge on line 1; project, duration and start date on
 // line 2. Completed rows use the "done" variant: muted name, dimmed priority
@@ -463,11 +481,6 @@ func (l *List) renderRow(t theme.Theme, width int, tk task.Task, selected bool, 
 	}
 	fill := t.Style(t.C.Text, bg)
 	lead := w.Marker(t, selected, bg) + w.Checkbox(t, tk.Done(), bg)
-
-	if l.Spec.OneLine {
-		name := w.Truncate(t, tk.Name, width-w.Width(lead)-2)
-		return []string{w.Fit(lead+fill.Render(" ")+t.Style(nameFg, bg).Render(name), width, fill)}
-	}
 
 	lead += w.PriorityMark(t, tk.Priority, tk.Done(), bg)
 	right := ""
@@ -508,6 +521,9 @@ func metadata(tk task.Task, projects map[task.ID]string) []string {
 // replaces the summary (errors and notices).
 func (l *List) StatusBar(t theme.Theme, width int, pending, message string) string {
 	msg := l.Spec.Summary(t, l.rows)
+	if l.Spec.DoneNote != nil && l.allDone() {
+		msg = l.Spec.DoneNote(l.today)
+	}
 	if message != "" {
 		msg = message
 	}
