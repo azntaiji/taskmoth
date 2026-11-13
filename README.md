@@ -1,5 +1,6 @@
 # taskmoth
 
+[![Version](https://img.shields.io/github/v/tag/azntaiji/taskmoth?sort=semver&label=version)](https://github.com/azntaiji/taskmoth/tags)
 [![CI](https://github.com/azntaiji/taskmoth/actions/workflows/ci.yml/badge.svg)](https://github.com/azntaiji/taskmoth/actions/workflows/ci.yml)
 [![Go version](https://img.shields.io/github/go-mod/go-version/azntaiji/taskmoth)](go.mod)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -122,7 +123,7 @@ internal/ui/gallery/ developer gallery
 - The UI is implemented from Figma designs, and each screen's node is listed in PLAN.md §3. Colours come only from `theme.Colors`, and glyphs only from `theme.Glyphs`.
 - Changes to the database schema go in a new numbered file in `internal/store/migrations/`. Never edit a released migration.
 - CI runs build, vet, race-enabled tests and lint on macOS and Ubuntu.
-- Versions follow [Semantic Versioning 2.0.0](https://semver.org/).
+- Versions follow [Semantic Versioning 2.0.0](https://semver.org/) and are released as git tags (`vX.Y.Z`); the version badge shows the latest tag. Until 1.0.0, each completed phase bumps the minor version (Phase 5 → 0.5.0) and fixes bump the patch.
 
 ## License
 

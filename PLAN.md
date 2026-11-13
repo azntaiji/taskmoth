@@ -280,7 +280,7 @@ Principles:
 
 **Gates:**
 
-- **G8.1 Distribution.** GoReleaser with GitHub Releases, Homebrew tap, `.deb`, `go install` only? Target architectures (*recommend darwin/arm64, darwin/amd64, linux/amd64, linux/arm64*). Versioning scheme.
+- **G8.1 Distribution.** GoReleaser with GitHub Releases, Homebrew tap, `.deb`, `go install` only? Target architectures (*recommend darwin/arm64, darwin/amd64, linux/amd64, linux/arm64*). (The versioning scheme was decided early, at G8.1a.)
 - **G8.2 Data safety.** Automatic backups before migrations? Export/import command (JSON)?
 
 **Work:** manual test matrix — macOS (Terminal.app, iTerm2, Ghostty) and Ubuntu (GNOME Terminal, plus tmux and SSH); resize handling at all sizes; 256-colour check; graceful handling of a locked or corrupt data file; performance check with 5,000 tasks (render and search stay responsive); README with install, key reference, and quick-add syntax; `--version`; release pipeline per G8.1.
@@ -379,6 +379,7 @@ Record every gate outcome here before proceeding.
 | G5.3 | **A hand-written parser** in `internal/nlp`: deterministic, table-tested and dependency-free, shared with the edit dialogs' date and duration fields. | 2026-11-12 | |
 | G5.4 | **Add Task feedback:** a muted preview line under the input, e.g. `→ #oneofftasks · due 2026-11-12 · s:2026-11-11 · ~30m · P2`. In a project's list the project defaults to that project, otherwise the Inbox, unless `#` is typed. `enter` adds the task and closes the dialog; the new task is selected if it's in the current view; the status bar says `Added "name".` | 2026-11-12 | The preview line isn't in the design (40:16708). |
 | G5.5 | **Approved at the Phase 5 review:**<br>• Recognised tokens are highlighted in `text/link`; the did-you-mean line is `text/warning` and errors are `text/error`.<br>• `ctrl+t` toggles a match by inserting or removing visible backslashes.<br>• The Add Task dialog grows below the input for the preview line (which wraps to two lines when long) and up to four suggestions.<br>• Prompt hints are shortened to fit (`tab #x  enter create  esc edit`; `esc hide list`).<br>• Did-you-mean suggests projects within 2 edits, or whose name contains the typed letters in order.<br>• `q` works in every view; from Completed and the Archive, tasks go to the Inbox.<br>• After adding, the status bar shows `Added "name".` and, when a project was created, `Created #x.` | 2026-11-12 | Known limitation: a word with trailing punctuation (`tomorrow.`) isn't recognised. |
+| G8.1a | **Versioning**, pulled forward from G8.1: SemVer 2.0.0 released as git tags `vX.Y.Z`. The README shows a version badge from the latest tag. Until 1.0.0 the minor version tracks completed phases (first release `v0.5.0` = Phases 0–5) and fixes bump the patch. 1.0.0 is the Phase 8 release. | 2026-11-12 | The distribution parts of G8.1 are still open. |
 
 ---
 

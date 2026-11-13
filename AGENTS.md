@@ -12,7 +12,9 @@ taskmoth is a keyboard-driven TUI task manager in Go (Bubble Tea v2, Lip Gloss v
 - **Don't expand scope.** Time tracking and analytics are future features (PLAN.md §7).
 - **Ship tests with code.** Keep the pure packages (`task`, `nlp`) free of UI and storage imports, and pass the current time in as a parameter rather than calling `time.Now()`.
 - **Quit keys are `ctrl+c` and `ctrl+q`.** `q` is "add task".
-- Use Semantic Versioning 2.0.0 for versioning.
+- **Versioning follows Semantic Versioning 2.0.0, released as git tags `vX.Y.Z`.** The README's version badge reads the latest tag, so never hardcode a version in README.md.
+  - **Until 1.0.0:** each completed phase bumps the minor version (Phase 6 → `v0.6.0`), and bug fixes bump the patch (`v0.6.1`). 1.0.0 is the Phase 8 release.
+  - **Tagging:** after a phase or fix is committed and pushed, propose the next tag to the operator. Create and push it (`git tag -a vX.Y.Z -m …` then `git push origin vX.Y.Z`) only when they confirm. Never move or delete an existing tag.
 
 ## Layout
 
