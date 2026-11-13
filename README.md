@@ -8,7 +8,7 @@
 
 A keyboard-driven task manager for the terminal, built with [Bubble Tea](https://github.com/charmbracelet/bubbletea).
 
-> **Status: in development.** You can add tasks with natural-language quick add, view and edit every field, and browse, sort, complete, archive and organize tasks across every list view (phases 0–6 of [PLAN.md](PLAN.md)). Search and the shortcuts overlay come next.
+> **Status: in development.** You can add tasks with natural-language quick add, view and edit every field, search, and browse, sort, complete, archive and organize tasks across every list view (phases 0–7 of [PLAN.md](PLAN.md)). Hardening and the 1.0.0 release come next.
 
 ## Features
 
@@ -38,6 +38,7 @@ Implemented:
 - **Search** (`/`): matches words in any order across names, descriptions and project names, with `#project` and `!p1`–`!p4` filters. Results update as you type, best match first.
 - **Keyboard Shortcuts** dialog (`?`), generated from the same key map as the hint rows.
 - **Completed tasks stay visible** (dimmed) until the end of the day.
+- **A little personality**: an empty Inbox shows a moth and a daily note, and finishing everything in Today swaps the status bar for a (usually moth-related) pat on the back.
 - **Local SQLite database** in `~/.local/share/taskmoth` (or `$XDG_DATA_HOME/taskmoth`) on macOS and Linux.
 - **Tasks** with a name, description, project, start date, due date, estimated duration and priority (P1–P4).
 - **Themed UI**: colours follow the Figma design's ANSI-palette tokens (Dracula by default). There is a Unicode/ASCII glyph switch.
@@ -122,10 +123,12 @@ The code is laid out as:
 
 ```
 cmd/taskmoth/        entry point and flags
+internal/paths/      XDG data and config directories
 internal/task/       domain model, view filters, sorting (pure; no UI or storage)
 internal/nlp/        quick-add parser, date phrases, durations (pure)
 internal/store/      SQLite store, migrations, in-memory store for tests
 internal/seed/       sample data from the designs
+internal/ui/         app model, key map, dialogs, Add Task, task view, Search, shortcuts
 internal/ui/view/    list views (Today, Inbox, …)
 internal/ui/theme/   colour tokens (palette → semantic), dimmed theme, glyphs
 internal/ui/widget/  widgets built from the Figma Components page
