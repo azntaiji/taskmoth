@@ -1,7 +1,6 @@
 package main
 
-// Developer commands (--seed, --list). --list is a temporary way to inspect
-// the database until the list views arrive in Phase 3.
+// Developer commands (--seed, --list), hidden from --help (G8.3).
 
 import (
 	"context"
@@ -21,7 +20,7 @@ func runDev(o options, dataDir string) (err error) {
 	ctx := context.Background()
 	s, err := store.OpenDir(ctx, dataDir, store.Options{})
 	if err != nil {
-		return fmt.Errorf("opening database: %w", err)
+		return openError(dataDir, err)
 	}
 	defer func() {
 		if cerr := s.Close(); err == nil && cerr != nil {

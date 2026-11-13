@@ -35,6 +35,7 @@ const timeLayout = "2006-01-02T15:04:05.000Z"
 type SQLite struct {
 	db   *sql.DB
 	opts Options
+	path string // the database file, for backups
 }
 
 var _ Store = (*SQLite)(nil)
@@ -47,8 +48,9 @@ func OpenDir(ctx context.Context, dataDir string, opts Options) (*SQLite, error)
 	return Open(ctx, filepath.Join(dataDir, FileName), opts)
 }
 
-// Open opens (creating if needed) the database file at path and migrates it
-// to the latest schema.
+// Open opens (creating if needed) the database file at path, checks its
+// integrity (G8.5) and migrates it to the latest schema, backing it up first
+// when a migration is needed (G8.2).
 func Open(ctx context.Context, path string, opts Options) (*SQLite, error) {
 	q := url.Values{}
 	q.Add("_pragma", "busy_timeout(5000)")
@@ -60,10 +62,14 @@ func Open(ctx context.Context, path string, opts Options) (*SQLite, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := &SQLite{db: db, opts: opts.withDefaults()}
+	s := &SQLite{db: db, opts: opts.withDefaults(), path: path}
+	if err := s.check(ctx); err != nil {
+		_ = db.Close() // already returning the check's error
+		return nil, err
+	}
 	if err := s.migrate(ctx); err != nil {
 		_ = db.Close() // already returning the migration error
-		return nil, err
+		return nil, corruptErr(err)
 	}
 	return s, nil
 }
@@ -116,27 +122,39 @@ func (s *SQLite) migrate(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	latest := len(ms)
+	current, err := s.SchemaVersion(ctx)
+	if err != nil {
+		return err
+	}
+	if current > latest {
+		return fmt.Errorf("%w (schema %d, this build knows up to %d)", ErrNewerSchema, current, latest)
+	}
+	if current == latest {
+		return nil
+	}
+	if current > 0 { // an existing database is about to change (G8.2)
+		if err := s.backup(ctx, current); err != nil {
+			return err
+		}
+	}
+
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }() // no-op after Commit
-
-	var current int
+	// Re-read inside the write lock, in case another process migrated.
 	if err := tx.QueryRowContext(ctx, "PRAGMA user_version").Scan(&current); err != nil {
 		return err
 	}
-	latest := len(ms)
-	if current > latest {
-		return fmt.Errorf("%w (schema %d, this build knows up to %d)", ErrNewerSchema, current, latest)
+	if current >= latest {
+		return nil
 	}
 	for _, m := range ms[current:] {
 		if _, err := tx.ExecContext(ctx, m.sql); err != nil {
 			return fmt.Errorf("migration %s: %w", m.name, err)
 		}
-	}
-	if current == latest {
-		return nil
 	}
 	if _, err := tx.ExecContext(ctx, fmt.Sprintf("PRAGMA user_version = %d", latest)); err != nil {
 		return err

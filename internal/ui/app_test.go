@@ -140,7 +140,7 @@ func run(a *App, cmd tea.Cmd) {
 	}
 }
 
-func newApp(t *testing.T, s store.Store, clk *clock, w, h int) *App {
+func newApp(t testing.TB, s store.Store, clk *clock, w, h int) *App {
 	t.Helper()
 	a := NewApp(theme.New(false), s, clk.Now)
 	a.Update(tea.WindowSizeMsg{Width: w, Height: h})

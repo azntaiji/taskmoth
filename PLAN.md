@@ -287,6 +287,8 @@ Principles:
 
 **Exit:** tagged release installable on both platforms.
 
+*Progress (2026-11-13):* G8.1–G8.7 decided. Done: integrity check, pre-migration backups, single-instance lock, `--version`, trimmed `--help`, GoReleaser config and release workflow (`make release-check` builds all four archives), README install steps. Checked automatically: every screen at sizes from 1×1 to 200×60; truecolor, 256-colour and 16-colour output; tmux. With 5,000 tasks on an M1 Pro, moving and redrawing takes 0.7 ms, a search keystroke 9.5 ms, and the reload after an edit 25 ms (`go test ./internal/ui -bench 5000`). Operator confirmed iTerm2, Terminal.app and Ghostty on macOS (2026-11-13). Left: GNOME Terminal, SSH, and installing a tagged release on macOS and Ubuntu.
+
 ---
 
 ## 6. Testing strategy
@@ -306,6 +308,8 @@ Not to be built now, but keep the door open:
 - **Task and project analytics** — completion rates, time per project, trends. Implication now: keep timestamps on tasks and prefer a queryable store.
 - **Recurring tasks** — e.g. `every monday`, `every 3 months`, Todoist's `every!` (repeat from completion). Implication now: quick add leaves recurring phrases in the name (G5.1e).
 - **Times of day** — due and start times (`tomorrow at 4pm`). Dates are date-only today (G2.1b), so this needs a schema change.
+- **Homebrew tap** — `brew install azntaiji/tap/taskmoth`, published by GoReleaser to a separate `azntaiji/homebrew-tap` repo (needs that repo and a token secret).
+- **Search in Goto Project** — type to filter the project list in the Goto Project dialog (`g p`) once there are many projects.
 - **Export** — CSV and JSON export of tasks and projects.
 - **Grouping options in lists** — group any list by due date, start date, priority, project, or duration buckets (Upcoming's day grouping, G4.1, is the first case).
 - **Theme support** — user-selectable colour themes (e.g. files in `~/.config/taskmoth/themes/` mapping Figma token names to colours), possibly including a light theme and a theme that follows the terminal's own ANSI palette. Implication now: every colour goes through `theme.Colors` (named after its Figma variable); views never construct colours. A terminal-palette theme can't use pre-blended dimming (G1.4) because its RGB values are unknown, so it would need the faint attribute instead.
@@ -410,6 +414,14 @@ Record every gate outcome here before proceeding.
 | G7.7 | **Add Task's help text names the default project** when opened from a project's list: "…Tasks without a # project are added to #work." Elsewhere it still says they go to the Inbox. | 2026-11-13 | Requested at the Phase 7 walkthrough. |
 | G7.8 | **Completing a task in a list selects the next open task below it**, or failing that the nearest open task above; if none is open, the selection stays on the completed task. Reopening keeps the selection on the task. | 2026-11-13 | Requested at the Phase 7 walkthrough. Supersedes "the selection follows the task" for completion. |
 | G7.9 | **Empty Someday and project lists get the Inbox treatment** (G6.12, G6.15): a muted daily note one line below the empty message, then the ASCII moth. Each kind of list has its own set of ~20 original, mostly moth-themed notes (Inbox, Someday, projects; no line is shared), and project notes can name the project ("#chores is all clear. The moth approves."). | 2026-11-13 | Requested after the Phase 7 walkthrough. |
+| G8.1c | **Distribution: GitHub Releases and `go install`.** GoReleaser builds archives (tar.gz) and `checksums.txt` for the G8.1b targets on each `vX.Y.Z` tag and attaches them to a GitHub Release. `go install …/cmd/taskmoth@latest` keeps working. The README gives per-platform install steps, including the macOS quarantine note for browser downloads. No install script, Homebrew tap or `.deb`. | 2026-11-13 | Homebrew moved to the roadmap (§7). Binaries are unsigned (no Apple Developer account). |
+| G8.1b | **Release binaries for four targets:** darwin/arm64, darwin/amd64, linux/amd64, linux/arm64. | 2026-11-13 | Pure Go (no cgo), so all four cross-compile from one runner. |
+| G8.2 | **Automatic backup before migrations only.** When a newer taskmoth needs to upgrade the schema, it first copies the database to `taskmoth.db.bak-v<old schema version>-<YYYYMMDD>` next to it, using SQLite's online backup so WAL contents are included, and keeps the three newest backups. No other automatic backups. | 2026-11-13 | Export stays on the roadmap (§7). |
+| G8.3 | **The developer flags stay in releases but are hidden from `--help`:** `--seed`, `--list` and `--gallery` keep working; `--help` lists only `--data`, `--ascii` and `--version`. README documents them under Development. | 2026-11-13 | |
+| G8.4 | **One taskmoth per database.** A lock file in the data directory (`taskmoth.lock`, an OS advisory lock, released automatically if the process dies). A second copy exits with "taskmoth: already running with <path>; close the other taskmoth first". `--list` doesn't take the lock. | 2026-11-13 | |
+| G8.5 | **A corrupt or unusable database stops taskmoth with a clear message**: on start a `PRAGMA quick_check`; if it fails, or the file isn't SQLite, or its schema is newer than this build knows, taskmoth exits non-zero naming the problem, the file's path and the newest backup (G8.2) if there is one. The file is never modified or moved. | 2026-11-13 | |
+| G8.6 | **`--version` prints version, commit and date:** `taskmoth 1.0.0 (a1b2c3d, 2026-11-20)`. Releases get them from GoReleaser (ldflags); `go install …@v1.0.0` builds print `taskmoth 1.0.0` (module zips carry no commit); local builds print the version Go derives from git tags, e.g. `taskmoth 0.7.1+dirty (bdc7bc7, 2026-11-13)`, or `taskmoth dev` without git. | 2026-11-13 | Local-build wording adjusted during Phase 8: Go 1.24+ stamps local builds from VCS tags, which says more than "dev". |
+| G8.7 | **Release notes are generated from commit subjects** since the previous tag, by GoReleaser, on the GitHub Release page. No CHANGELOG.md. | 2026-11-13 | |
 | G8.1a | **Versioning**, pulled forward from G8.1: SemVer 2.0.0 released as git tags `vX.Y.Z`. The README shows a version badge from the latest tag. Until 1.0.0 the minor version tracks completed phases (first release `v0.5.0` = Phases 0–5) and fixes bump the patch. 1.0.0 is the Phase 8 release. | 2026-11-12 | The distribution parts of G8.1 are still open. |
 
 ---

@@ -53,9 +53,11 @@ func TooSmall(t theme.Theme, width, height int) string {
 	}
 	base := t.Base()
 	muted := t.Style(t.Fade(t.C.Text), t.C.Bg)
-	block := lipgloss.JoinVertical(lipgloss.Center,
-		base.Bold(true).Render(Truncate(t, msg[0], width)),
-		muted.Render(Truncate(t, msg[1], width)))
+	lines := []string{base.Bold(true).Render(Truncate(t, msg[0], width))}
+	if height >= 2 { // a one-row terminal gets the headline only
+		lines = append(lines, muted.Render(Truncate(t, msg[1], width)))
+	}
+	block := lipgloss.JoinVertical(lipgloss.Center, lines...)
 	return lipgloss.Place(max(width, 1), max(height, 1), lipgloss.Center, lipgloss.Center, block,
 		lipgloss.WithWhitespaceStyle(base))
 }

@@ -1,0 +1,39 @@
+# GoReleaser config (decisions G8.1b, G8.1c, G8.6, G8.7). The release
+# workflow runs it on every vX.Y.Z tag; `make release-check` validates it and
+# builds a local snapshot into dist/.
+version: 2
+
+project_name: taskmoth
+
+builds:
+  - main: ./cmd/taskmoth
+    binary: taskmoth
+    env:
+      - CGO_ENABLED=0 # pure-Go SQLite, so cross-compiling needs no C toolchain
+    goos: [darwin, linux]
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}} -X main.date={{.CommitDate}}
+    mod_timestamp: "{{.CommitTimestamp}}"
+
+archives:
+  - formats: [tar.gz]
+    name_template: "{{.ProjectName}}_{{.Version}}_{{.Os}}_{{.Arch}}"
+    files: [README.md, LICENSE]
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  use: git
+  sort: asc
+  filters:
+    exclude:
+      - "^Merge "
+
+release:
+  github:
+    owner: azntaiji
+    name: taskmoth
+  prerelease: auto

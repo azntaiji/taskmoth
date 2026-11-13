@@ -8,7 +8,7 @@
 
 A keyboard-driven task manager for the terminal, built with [Bubble Tea](https://github.com/charmbracelet/bubbletea).
 
-> **Status: in development.** You can add tasks with natural-language quick add, view and edit every field, search, and browse, sort, complete, archive and organize tasks across every list view (phases 0–7 of [PLAN.md](PLAN.md)). Hardening and the 1.0.0 release come next.
+> **Status: release candidate.** Every planned feature is in: natural-language quick add, editing every field, search, and browsing, sorting, completing, archiving and organizing tasks across every list view (phases 0–7 of [PLAN.md](PLAN.md)). Phase 8 (hardening and release packaging) leads to 1.0.0.
 
 ## Features
 
@@ -46,16 +46,49 @@ Implemented:
 
 Planned (see [PLAN.md](PLAN.md)):
 
-- CSV/JSON export, and grouping options for lists (by date, priority, project or duration).
+- CSV/JSON export, grouping options for lists (by date, priority, project or duration), and search in the Goto Project dialog.
 - Recurring tasks, times of day, user themes, time tracking, analytics.
 
 ## Install
 
-From source (Go 1.26+):
+taskmoth runs on macOS and Linux (Intel and ARM). It needs a terminal of at least 80×24.
+
+### From a GitHub release
+
+Each [release](https://github.com/azntaiji/taskmoth/releases) has a `.tar.gz` per platform and a `checksums.txt`. Pick the archive for your machine:
+
+| Machine | Archive |
+|---|---|
+| Mac with Apple silicon (M1 and later) | `taskmoth_<version>_darwin_arm64.tar.gz` |
+| Intel Mac | `taskmoth_<version>_darwin_amd64.tar.gz` |
+| Linux on x86-64 | `taskmoth_<version>_linux_amd64.tar.gz` |
+| Linux on ARM64 (e.g. Raspberry Pi 4/5 with a 64-bit OS) | `taskmoth_<version>_linux_arm64.tar.gz` |
+
+Then, for example on an Apple silicon Mac (replace the version and platform):
+
+```sh
+VERSION=1.0.0
+curl -LO https://github.com/azntaiji/taskmoth/releases/download/v$VERSION/taskmoth_${VERSION}_darwin_arm64.tar.gz
+curl -LO https://github.com/azntaiji/taskmoth/releases/download/v$VERSION/checksums.txt
+shasum -a 256 --ignore-missing -c checksums.txt   # on Linux: sha256sum --ignore-missing -c checksums.txt
+tar xzf taskmoth_${VERSION}_darwin_arm64.tar.gz
+mkdir -p ~/.local/bin && mv taskmoth ~/.local/bin/   # or any directory on your PATH
+taskmoth --version
+```
+
+To upgrade, repeat with the new version. Your tasks stay where they are.
+
+**macOS and browser downloads:** the binaries aren't signed by Apple. Downloaded with `curl` as above, they run as is. If you download the archive in a browser instead, macOS blocks the first run ("Apple could not verify…"). Clear the flag with `xattr -d com.apple.quarantine ~/.local/bin/taskmoth`, or allow it under System Settings → Privacy & Security.
+
+### With Go
+
+With Go 1.26 or later:
 
 ```sh
 go install github.com/azntaiji/taskmoth/cmd/taskmoth@latest
 ```
+
+This puts `taskmoth` in `$(go env GOPATH)/bin`. Run the same command to upgrade.
 
 ## Usage
 
@@ -63,6 +96,7 @@ go install github.com/azntaiji/taskmoth/cmd/taskmoth@latest
 taskmoth                    # start the app
 taskmoth --data DIR         # use DIR for the database instead of the default
 taskmoth --ascii            # ASCII symbols for minimal fonts/terminals (or TASKMOTH_ASCII=1)
+taskmoth --version          # print the version
 ```
 
 Quit with `ctrl+q` or `ctrl+c` (`q` is "add task"). Press `?` for every key.
@@ -86,6 +120,14 @@ Quit with `ctrl+q` or `ctrl+c` (`q` is "add task"). Press `?` for every key.
 | `esc` | cancel a pending `g`, close a dialog, or go back |
 
 Dialogs use `←`/`→` to choose a button and `enter` to confirm. In edit dialogs, an empty value clears the field (`no date` also clears a date), and Edit Project's "Inbox" entry removes the project. In Edit Description, `shift+enter` (where the terminal supports it), `alt+enter` or `ctrl+j` adds a line break.
+
+### Your data
+
+Everything lives in one SQLite file, `taskmoth.db`, in `~/.local/share/taskmoth` (or `$XDG_DATA_HOME/taskmoth`, or the `--data` directory). To back it up, copy that directory while taskmoth isn't running.
+
+- **Before a new version upgrades the database**, taskmoth saves a copy next to it (`taskmoth.db.bak-v<schema>-<date>`) and keeps the three newest.
+- **Only one taskmoth runs per database.** A second one exits with "already running" rather than risk overwriting the first one's changes.
+- **If the file is damaged** (or was written by a newer taskmoth), taskmoth stops with a message naming the file and the newest backup, and leaves the file untouched. To restore a backup, quit taskmoth and copy the backup over `taskmoth.db`.
 
 ### Search
 
@@ -119,16 +161,22 @@ make test      # go test ./...
 make golden    # rewrite golden render files after an intended visual change
 make lint      # golangci-lint v2 (fetched with go run)
 make check     # build + vet + test + lint: must pass before a change is done
+make release-check  # validate the GoReleaser config and build every release archive into dist/
 ```
+
+Developer flags, hidden from `--help`: `--seed` loads the sample data from the designs into an empty data directory, `--list VIEW` prints a view (`today`, `upcoming`, `overdue`, `inbox`, `someday`, `all`, `completed`, `archive`, `project:<name>`), and `--gallery` shows the widget gallery. Always point them at a scratch directory, e.g. `taskmoth --data /tmp/tm --seed`.
+
+**Releases** are built by [GoReleaser](https://goreleaser.com) in `.github/workflows/release.yml` when a `vX.Y.Z` tag is pushed. The release notes list the commit subjects since the previous tag.
 
 The code is laid out as:
 
 ```
 cmd/taskmoth/        entry point and flags
 internal/paths/      XDG data and config directories
+internal/lock/       single-instance lock on the data directory
 internal/task/       domain model, view filters, sorting (pure; no UI or storage)
 internal/nlp/        quick-add parser, date phrases, durations (pure)
-internal/store/      SQLite store, migrations, in-memory store for tests
+internal/store/      SQLite store, migrations, integrity check and backups, in-memory store for tests
 internal/seed/       sample data from the designs
 internal/ui/         app model, key map, dialogs, Add Task, task view, Search, shortcuts
 internal/ui/view/    list views (Today, Inbox, …)

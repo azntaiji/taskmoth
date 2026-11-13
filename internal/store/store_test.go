@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -583,6 +584,148 @@ func assertNoStaleColumns(t *testing.T, s *SQLite) {
 		}
 		if strings.Contains(def, "deleted_at") {
 			t.Errorf("%s still references deleted_at:\n%s", name, def)
+		}
+	}
+}
+
+// G8.5: a file that isn't SQLite, or a damaged one, is refused untouched.
+func TestSQLiteRefusesCorruptFiles(t *testing.T) {
+	ctx := context.Background()
+
+	notDB := filepath.Join(t.TempDir(), FileName)
+	garbage := []byte(strings.Repeat("this is not a database\n", 400))
+	if err := os.WriteFile(notDB, garbage, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Open(ctx, notDB, Options{}); !errors.Is(err, ErrCorrupt) {
+		t.Errorf("opening a text file: %v", err)
+	}
+	if got, _ := os.ReadFile(notDB); string(got) != string(garbage) {
+		t.Error("the file must not be modified")
+	}
+
+	// A real database with a damaged table page.
+	damaged := filepath.Join(t.TempDir(), FileName)
+	s, err := Open(ctx, damaged, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range 200 {
+		if _, err := s.CreateTask(ctx, task.Task{Name: fmt.Sprintf("task %03d with some padding text", i)}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := s.db.ExecContext(ctx, "PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(damaged)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 4096 * 3; i < 4096*3+600 && i < len(b); i++ { // scribble over a page past the schema
+		b[i] = 0xA5
+	}
+	if err := os.WriteFile(damaged, b, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Open(ctx, damaged, Options{}); !errors.Is(err, ErrCorrupt) {
+		t.Errorf("opening a damaged database: %v", err)
+	}
+}
+
+// G8.2: upgrading an existing database backs it up first and keeps the
+// three newest backups; new and current databases aren't backed up.
+func TestSQLiteBacksUpBeforeMigrating(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	path := filepath.Join(dir, FileName)
+
+	s, err := Open(ctx, path, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := Backups(path); len(b) != 0 {
+		t.Fatalf("a new database needs no backup: %v", b)
+	}
+
+	day := time.Date(2026, 11, 13, 9, 0, 0, 0, time.Local)
+	for i := range 5 {
+		writeV1(t, path, fmt.Sprintf("precious %d", i)) // as an older taskmoth left it
+		s, err := Open(ctx, path, Options{Now: func() time.Time { return day }})
+		if err != nil {
+			t.Fatalf("upgrade %d: %v", i, err)
+		}
+		if err := s.Close(); err != nil {
+			t.Fatal(err)
+		}
+		time.Sleep(20 * time.Millisecond) // distinct modification times
+	}
+	backups, err := Backups(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(backups) != keepBackups {
+		t.Fatalf("backups = %v, want %d", backups, keepBackups)
+	}
+	for _, b := range backups {
+		if !strings.HasPrefix(b, path+".bak-v1-20261113") {
+			t.Errorf("backup name %s", b)
+		}
+	}
+	b, err := sql.Open("sqlite", backups[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = b.Close() }()
+	var name string
+	var v int
+	if err := b.QueryRow("SELECT name FROM tasks").Scan(&name); err != nil || name != "precious 4" {
+		t.Errorf("backup holds %q (%v), want the pre-upgrade data", name, err)
+	}
+	if err := b.QueryRow("PRAGMA user_version").Scan(&v); err != nil || v != 1 {
+		t.Errorf("backup schema = %d, want 1", v)
+	}
+
+	// Opening an up-to-date database makes no new backup.
+	s, err = Open(ctx, path, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = s.Close()
+	if again, _ := Backups(path); len(again) != keepBackups || again[0] != backups[0] {
+		t.Errorf("unexpected backup: %v", again)
+	}
+}
+
+// writeV1 replaces the database at path with a schema-1 database holding
+// one task.
+func writeV1(t *testing.T, path, taskName string) {
+	t.Helper()
+	for _, suffix := range []string{"", "-wal", "-shm"} {
+		if err := os.Remove(path + suffix); err != nil && !errors.Is(err, os.ErrNotExist) {
+			t.Fatal(err)
+		}
+	}
+	ms, err := migrations()
+	if err != nil {
+		t.Fatal(err)
+	}
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+	now := "2026-11-10T15:26:00.000Z"
+	for _, q := range []string{ms[0].sql, "PRAGMA user_version = 1",
+		fmt.Sprintf("INSERT INTO tasks (id, name, created_at, updated_at) VALUES ('x', '%s', '%s', '%s')", taskName, now, now)} {
+		if _, err := db.Exec(q); err != nil {
+			t.Fatal(err)
 		}
 	}
 }

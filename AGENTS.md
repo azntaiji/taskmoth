@@ -14,16 +14,18 @@ taskmoth is a keyboard-driven TUI task manager in Go (Bubble Tea v2, Lip Gloss v
 - **Quit keys are `ctrl+c` and `ctrl+q`.** `q` is "add task".
 - **Versioning follows Semantic Versioning 2.0.0, released as git tags `vX.Y.Z`.** The README's version badge reads the latest tag, so never hardcode a version in README.md.
   - **Until 1.0.0:** each completed phase bumps the minor version (Phase 6 → `v0.6.0`), and bug fixes bump the patch (`v0.6.1`). 1.0.0 is the Phase 8 release.
-  - **Tagging:** after a phase or fix is committed and pushed, propose the next tag to the operator. Create and push it (`git tag -a vX.Y.Z -m …` then `git push origin vX.Y.Z`) only when they confirm. Never move or delete an existing tag.
+  - **Tagging:** after a phase or fix is committed and pushed, propose the next tag to the operator. Create and push it (`git tag -a vX.Y.Z -m …` then `git push origin vX.Y.Z`) only when they confirm. Never move or delete an existing tag. Pushing a tag publishes a public GitHub Release (`release.yml`), so run `make release-check` before proposing one.
 
 ## Layout
 
 ```
-cmd/taskmoth/        entry point and flags (--data, --ascii, --gallery, --seed, --list)
+cmd/taskmoth/        entry point and flags (--data, --ascii, --version; hidden: --gallery, --seed, --list)
 internal/paths/      XDG data/config directory resolution
+internal/lock/       single-instance lock on the data directory (flock; G8.4)
 internal/task/       domain model, validation, view filters, sort orders (pure)
 internal/nlp/        quick-add parser (PLAN.md Appendix A), ParseDate, ParseDuration (pure)
-internal/store/      Store interface; SQLite implementation + embedded migrations;
+internal/store/      Store interface; SQLite implementation + embedded migrations, integrity
+                     check (G8.5) and pre-migration backups (G8.2);
                      in-memory implementation for UI tests (both pass the same contract tests)
 internal/seed/       sample data from the designs (taskmoth --seed)
 internal/ui/         root Bubble Tea model (app.go): store, clock, key chords, view switching;
@@ -71,9 +73,10 @@ make vet
 make lint    # golangci-lint v2 via go run (no install needed)
 make fmt
 make check   # build + vet + test + lint (must pass before a phase is done)
+make release-check # goreleaser check + a snapshot build of every release archive into dist/
 ```
 
-CI (`.github/workflows/ci.yml`) runs build, vet, and race-enabled tests on `ubuntu-latest` and `macos-latest`, plus lint.
+CI (`.github/workflows/ci.yml`) runs build, vet, and race-enabled tests on `ubuntu-latest` and `macos-latest`, plus lint. Pushing a `vX.Y.Z` tag runs `.github/workflows/release.yml`, which tests and then publishes a GitHub Release with GoReleaser (`.goreleaser.yaml`). Pinned tool versions: golangci-lint and GoReleaser in the Makefile, GoReleaser again in `release.yml`; keep them in step.
 
 ## Before reporting work done
 
