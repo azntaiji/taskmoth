@@ -3,7 +3,7 @@ GOLANGCI_LINT := go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$
 GORELEASER_VERSION := v2.19.0
 GORELEASER := go run github.com/goreleaser/goreleaser/v2@$(GORELEASER_VERSION)
 
-.PHONY: build test vet lint fmt run gallery golden check release-check clean
+.PHONY: build test vet lint fmt run gallery golden check release-check demo clean
 
 build:
 	go build -o bin/taskmoth ./cmd/taskmoth
@@ -40,5 +40,12 @@ release-check:
 	$(GORELEASER) check
 	$(GORELEASER) release --snapshot --clean
 
+# Re-record the README's GIFs and screenshots (docs/images) with VHS
+# (brew install vhs). Uses scratch data in /tmp, never your real tasks.
+demo: build
+	mkdir -p .vhs-tmp
+	for t in demo quick-add search edit stills; do vhs docs/tapes/$$t.tape || exit 1; done
+	rm -rf .vhs-tmp
+
 clean:
-	rm -rf bin dist
+	rm -rf bin dist .vhs-tmp

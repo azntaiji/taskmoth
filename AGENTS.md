@@ -40,6 +40,7 @@ internal/ui/theme/   Figma colour tokens, the dimmed theme, glyph sets (Unicode/
 internal/ui/widget/  widgets built from the Figma Components page (header, status bar,
                      key hints, badges, checkbox, marker, scrollbar, frame, input, overlay)
 internal/ui/gallery/ dev gallery (taskmoth --gallery) for comparing widgets with Figma
+docs/images/         README logo (SVG), screenshots and GIFs; docs/tapes/ holds the VHS scripts
 ```
 
 ## UI conventions
@@ -74,6 +75,7 @@ make lint    # golangci-lint v2 via go run (no install needed)
 make fmt
 make check   # build + vet + test + lint (must pass before a phase is done)
 make release-check # goreleaser check + a snapshot build of every release archive into dist/
+make demo    # re-record docs/images GIFs/PNGs from docs/tapes with VHS (after visible UI changes)
 ```
 
 CI (`.github/workflows/ci.yml`) runs build, vet, and race-enabled tests on `ubuntu-latest` and `macos-latest`, plus lint. Pushing a `vX.Y.Z` tag runs `.github/workflows/release.yml`, which tests and then publishes a GitHub Release with GoReleaser (`.goreleaser.yaml`). Pinned tool versions: golangci-lint and GoReleaser in the Makefile, GoReleaser again in `release.yml`; keep them in step.
@@ -83,4 +85,4 @@ CI (`.github/workflows/ci.yml`) runs build, vet, and race-enabled tests on `ubun
 - `make check` passes.
 - Every gate you resolved is in the PLAN.md decision log.
 - AGENTS.md (layout and commands) and PLAN.md are updated if anything they describe changed.
-- README.md is kept up-to-date with: Shields badges, an overview of the application, key features, commands, and a section for developers/contributing. 
+- README.md is kept up-to-date with: Shields badges, an overview of the application, key features, commands, and a section for developers/contributing. If a change alters what the README's screenshots or GIFs show, re-record them with `make demo` and check them. 

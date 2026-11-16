@@ -1,53 +1,87 @@
-# taskmoth
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo-dark.svg">
+    <img src="docs/images/logo-light.svg" alt="taskmoth" width="420">
+  </picture>
+</p>
 
-[![Version](https://img.shields.io/github/v/tag/azntaiji/taskmoth?sort=semver&label=version)](https://github.com/azntaiji/taskmoth/tags)
-[![CI](https://github.com/azntaiji/taskmoth/actions/workflows/ci.yml/badge.svg)](https://github.com/azntaiji/taskmoth/actions/workflows/ci.yml)
-[![Go version](https://img.shields.io/github/go-mod/go-version/azntaiji/taskmoth)](go.mod)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-![Platforms](https://img.shields.io/badge/platforms-macOS%20%7C%20Ubuntu-lightgrey)
+<p align="center"><strong>A keyboard-driven task manager for the terminal.</strong><br>
+Natural-language quick add, smart lists, instant search — all in a fast, local TUI built with <a href="https://github.com/charmbracelet/bubbletea">Bubble Tea</a>.</p>
 
-A keyboard-driven task manager for the terminal, built with [Bubble Tea](https://github.com/charmbracelet/bubbletea).
+<p align="center">
+  <a href="https://github.com/azntaiji/taskmoth/releases/latest"><img src="https://img.shields.io/github/v/tag/azntaiji/taskmoth?sort=semver&label=version" alt="Version"></a>
+  <a href="https://github.com/azntaiji/taskmoth/actions/workflows/ci.yml"><img src="https://github.com/azntaiji/taskmoth/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="go.mod"><img src="https://img.shields.io/github/go-mod/go-version/azntaiji/taskmoth" alt="Go version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
+  <img src="https://img.shields.io/badge/platforms-macOS%20%7C%20Linux-lightgrey" alt="Platforms: macOS | Linux">
+</p>
 
-> **Status: release candidate.** Every planned feature is in: natural-language quick add, editing every field, search, and browsing, sorting, completing, archiving and organizing tasks across every list view (phases 0–7 of [PLAN.md](PLAN.md)). Phase 8 (hardening and release packaging) leads to 1.0.0.
+<p align="center">
+  <a href="#install">Install</a> ·
+  <a href="#usage">Usage</a> ·
+  <a href="#quick-add">Quick add</a> ·
+  <a href="#development">Development</a>
+</p>
+
+<p align="center"><img src="docs/images/demo.gif" alt="taskmoth: moving through Today, completing a task, switching to Upcoming, Someday and Inbox, and opening the shortcuts dialog" width="760"></p>
 
 ## Features
 
-Implemented:
+### Add tasks the way you'd say them
 
-- **Natural-language quick add** (`q`), Todoist-style:
-  - Example: `Change the laundry #chores tomorrow ~30m p2 s:monday`.
-  - Recognised parts are highlighted as you type, with a preview line of the result.
-  - Project names autocomplete, and a typo like `#chors` asks "Did you mean #chores?".
-- **Task view and editing**:
-  - `e` opens a task with its description.
-  - Single keys edit any field, from the task view or straight from a list: name, description, project, start date, due date, duration and priority.
-  - Dates and durations accept natural language (`next monday`, `1.5h`).
-- **List views**:
-  - **Today**: due, overdue, or already started.
-  - **Upcoming**: the next 7 days, grouped by day.
-  - **Someday**: open tasks with no due date.
-  - **Overdue**, **Inbox**, **All**, **Completed**, the **Archive**, and one list per **project**.
-- **Rows and status**:
-  - Two-line task rows with priority and due badges, duration and start date.
-  - A live clock in the header.
-  - A status bar with task count, total and remaining time, and the current sort.
-- **Projects** named as `#slugs`:
-  - Pick one with `g p`, and create new ones there.
-  - Archiving a project archives its tasks too, and unarchiving brings them back.
-- **Archive instead of delete**: `x` archives a task, and `g x` shows the archive. Permanent deletion only happens from the archive, after a confirmation.
-- **Keyboard driven**: arrows or `j`/`k`, `space` to complete, `s` to sort (each view remembers its own sort), and `g` chords to switch views.
-- **Search** (`/`): matches words in any order across names, descriptions and project names, with `#project` and `!p1`–`!p4` filters. Results update as you type, best match first.
-- **Keyboard Shortcuts** dialog (`?`), generated from the same key map as the hint rows.
-- **Completed tasks stay visible** (dimmed) until the end of the day.
-- **A little personality**: an empty Inbox, Someday list or project shows a moth and a daily note (each with its own set), and finishing everything in Today swaps the status bar for a (usually moth-related) pat on the back.
-- **Local SQLite database** in `~/.local/share/taskmoth` (or `$XDG_DATA_HOME/taskmoth`) on macOS and Linux.
-- **Tasks** with a name, description, project, start date, due date, estimated duration and priority (P1–P4).
-- **Themed UI**: colours follow the Figma design's ANSI-palette tokens (Dracula by default). There is a Unicode/ASCII glyph switch.
+Press `q` and type. Dates, projects, priorities and durations are picked out as you go (Todoist-style), highlighted, and previewed before you commit. Project names autocomplete, typos get a "Did you mean #chores?", and new projects are created on the spot.
 
-Planned (see [PLAN.md](PLAN.md)):
+<p align="center"><img src="docs/images/quick-add.gif" alt="Quick add: typing &quot;Pick up dry cleaning #chores tomorrow ~20m p2&quot;, then creating the new #chores project" width="760"></p>
 
-- CSV/JSON export, grouping options for lists (by date, priority, project or duration), and search in the Goto Project dialog.
-- Recurring tasks, times of day, user themes, time tracking, analytics.
+### Lists that sort themselves out
+
+- **Today**: due, overdue or already started. **Upcoming**: the next 7 days, grouped by day. **Someday**: everything without a due date.
+- **Overdue**, **Inbox**, **All**, **Completed**, the **Archive**, and a list per **#project**, each a `g` chord away.
+- Two-line rows with priority and due badges, duration and start date. The status bar totals the time left in the view.
+- `s` cycles the sort (priority, due, start, duration, name), remembered per view. Completed tasks stay visible, dimmed, until the end of the day.
+
+<p align="center">
+  <img src="docs/images/today.png" alt="The Today view" width="49%">
+  <img src="docs/images/upcoming.png" alt="The Upcoming view, grouped by day" width="49%">
+</p>
+
+### Find anything as you type
+
+`/` searches names, descriptions and project names, with words in any order. Narrow it down with `#project`, `#inbox` or `!p1`–`!p4`. Press `enter` to work on the results with the usual keys.
+
+<p align="center"><img src="docs/images/search.gif" alt="Search: &quot;eggs&quot;, then &quot;#one !p2&quot;, then opening a result" width="760"></p>
+
+### Every field is one key away
+
+`e` opens a task with its description. From there, or straight from any list, single keys edit the name (`n`), description (`d`), project (`v`), start date (`r`), due date (`t`), duration (`y`) and priority (`p`). Dates and durations take natural language too: `next friday`, `1.5h`.
+
+<p align="center"><img src="docs/images/edit.gif" alt="Editing a task: due date &quot;next friday&quot;, priority 1, duration 1.5h, and a description" width="760"></p>
+
+### Keyboard first, and it tells you the keys
+
+Hint rows at the bottom of every screen, and `?` for the full map. Arrows or `j`/`k`, `space` to complete, `x` to archive (nothing is deleted without going through the archive first).
+
+<p align="center"><img src="docs/images/shortcuts.png" alt="The Keyboard Shortcuts dialog" width="760"></p>
+
+### And a little personality
+
+An empty Inbox, Someday list or project gets a moth and a note for the day. Clear out Today and the status bar gives you a (usually moth-related) pat on the back.
+
+<p align="center">
+  <img src="docs/images/empty-inbox.png" alt="An empty Inbox with the ASCII moth" width="49%">
+  <img src="docs/images/task-view.png" alt="A task with its description" width="49%">
+</p>
+
+### Under the hood
+
+- **Local and private**: one SQLite file in `~/.local/share/taskmoth`, no account, no network. Automatic backups before upgrades.
+- **Fast**: stays instant with thousands of tasks.
+- **Works anywhere**: macOS and Linux, Intel and ARM, over SSH and inside tmux. True colour, 256-colour and 16-colour terminals, and an `--ascii` mode for minimal fonts.
+- **Designed first**: every screen was built from a Figma design, with colours from Dracula-based design tokens.
+
+### Planned
+
+CSV/JSON export, grouping options for lists, search in the project picker, a Homebrew tap, recurring tasks, times of day, user themes, time tracking and analytics. See [PLAN.md §7](PLAN.md#7-future-features-out-of-scope).
 
 ## Install
 
@@ -162,7 +196,10 @@ make golden    # rewrite golden render files after an intended visual change
 make lint      # golangci-lint v2 (fetched with go run)
 make check     # build + vet + test + lint: must pass before a change is done
 make release-check  # validate the GoReleaser config and build every release archive into dist/
+make demo           # re-record the README's GIFs and screenshots with VHS (brew install vhs)
 ```
+
+The README's images live in `docs/images`. The GIFs and screenshots are recorded from scripts in `docs/tapes` with [VHS](https://github.com/charmbracelet/vhs), using the sample data in a scratch directory, so `make demo` reproduces them after a UI change. The logo is SVG.
 
 Developer flags, hidden from `--help`: `--seed` loads the sample data from the designs into an empty data directory, `--list VIEW` prints a view (`today`, `upcoming`, `overdue`, `inbox`, `someday`, `all`, `completed`, `archive`, `project:<name>`), and `--gallery` shows the widget gallery. Always point them at a scratch directory, e.g. `taskmoth --data /tmp/tm --seed`.
 
@@ -183,6 +220,8 @@ internal/ui/view/    list views (Today, Inbox, …)
 internal/ui/theme/   colour tokens (palette → semantic), dimmed theme, glyphs
 internal/ui/widget/  widgets built from the Figma Components page
 internal/ui/gallery/ developer gallery
+docs/images/         logo, README screenshots and GIFs
+docs/tapes/          VHS scripts that record the screenshots and GIFs
 ```
 
 ### Contributing
