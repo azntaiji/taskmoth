@@ -76,6 +76,7 @@ An empty Inbox, Someday list or project gets a moth and a note for the day. Clea
 ### Under the hood
 
 - **Local and private**: one SQLite file in `~/.local/share/taskmoth`, no account, no network. Automatic backups before upgrades.
+- **Your data, portable**: `taskmoth --export csv` or `--export json` prints every task and project, ready for a spreadsheet or `jq`.
 - **Fast**: stays instant with thousands of tasks.
 - **Your terminal's colours**: the default theme draws with the 16 ANSI colours of your terminal's own scheme, light or dark, and its own background. Prefer the look in the screenshots everywhere? Switch to the built-in Dracula theme (see [Settings](#settings)).
 - **Works anywhere**: macOS and Linux, Intel and ARM, over SSH and inside tmux. True colour, 256-colour and 16-colour terminals, and an `--ascii` mode for minimal fonts.
@@ -83,7 +84,7 @@ An empty Inbox, Someday list or project gets a moth and a note for the day. Clea
 
 ### Planned
 
-CSV/JSON export, grouping options for lists, search in the project picker, a Homebrew tap, recurring tasks, times of day, user themes, time tracking and analytics. See [PLAN.md §7](PLAN.md#7-future-features-out-of-scope).
+Grouping options for lists, search in the project picker, a Homebrew tap, recurring tasks, times of day, user themes, time tracking and analytics. See [PLAN.md §7](PLAN.md#7-future-features-out-of-scope).
 
 ## Install
 
@@ -132,6 +133,8 @@ This puts `taskmoth` in `$(go env GOPATH)/bin`. Run the same command to upgrade.
 taskmoth                    # start the app
 taskmoth --data DIR         # use DIR for the database instead of the default
 taskmoth --ascii            # ASCII symbols for minimal fonts/terminals (or TASKMOTH_ASCII=1)
+taskmoth --export csv       # print every task as CSV (or json) and exit
+taskmoth --export json --output tasks.json   # write the export to a file
 taskmoth --version          # print the version
 ```
 
@@ -181,6 +184,18 @@ Everything lives in one SQLite file, `taskmoth.db`, in `~/.local/share/taskmoth`
 - **Before a new version upgrades the database**, taskmoth saves a copy next to it (`taskmoth.db.bak-v<schema>-<date>`) and keeps the three newest.
 - **Only one taskmoth runs per database.** A second one exits with "already running" rather than risk overwriting the first one's changes.
 - **If the file is damaged** (or was written by a newer taskmoth), taskmoth stops with a message naming the file and the newest backup, and leaves the file untouched. To restore a backup, quit taskmoth and copy the backup over `taskmoth.db`.
+
+### Export
+
+`taskmoth --export csv` or `taskmoth --export json` prints every task, open, completed and archived, to standard output; add `--output FILE` to write a file instead. It works while taskmoth is open.
+
+- **JSON** has a `projects` array and a `tasks` array; each task carries its `project_id` and `project` name.
+- **CSV** has one row per task: `id,name,description,project,priority,start,due,duration_min,created_at,updated_at,completed_at,archived_at`.
+- Dates are `YYYY-MM-DD`, timestamps are RFC 3339 in UTC, and durations are in minutes. Unset values are `null` in JSON and empty in CSV.
+
+```sh
+taskmoth --export json | jq '.tasks[] | select(.completed_at == null and .priority == 1) | .name'
+```
 
 ### Search
 
@@ -234,6 +249,7 @@ internal/lock/       single-instance lock on the data directory
 internal/task/       domain model, view filters, sorting (pure; no UI or storage)
 internal/nlp/        quick-add parser, date phrases, durations (pure)
 internal/store/      SQLite store, migrations, integrity check and backups, in-memory store for tests
+internal/export/     CSV and JSON export
 internal/seed/       sample data from the designs
 internal/ui/         app model, key map, dialogs, Add Task, task view, Search, shortcuts
 internal/ui/view/    list views (Today, Inbox, …)

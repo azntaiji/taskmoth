@@ -15,6 +15,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/azntaiji/taskmoth/internal/config"
+	"github.com/azntaiji/taskmoth/internal/export"
 	"github.com/azntaiji/taskmoth/internal/lock"
 	"github.com/azntaiji/taskmoth/internal/paths"
 	"github.com/azntaiji/taskmoth/internal/store"
@@ -30,6 +31,8 @@ type options struct {
 	gallery bool
 	seed    bool
 	list    string
+	export  string
+	output  string
 }
 
 // devFlags work but are left out of --help (decision G8.3).
@@ -45,7 +48,7 @@ func usage(fs *flag.FlagSet) func() {
 				return
 			}
 			name, help := flag.UnquoteUsage(f)
-			_, _ = fmt.Fprintf(w, "  --%-12s %s\n", strings.TrimSpace(f.Name+" "+name), help)
+			_, _ = fmt.Fprintf(w, "  --%-14s %s\n", strings.TrimSpace(f.Name+" "+name), help)
 		})
 		_, _ = fmt.Fprint(w, "\nSettings live in $XDG_CONFIG_HOME/taskmoth/config.toml (default ~/.config/taskmoth):\n")
 		_, _ = fmt.Fprintf(w, "  theme = %q   colour theme: %s (also TASKMOTH_THEME)\n", theme.DefaultName, strings.Join(theme.Names(), " or "))
@@ -60,6 +63,8 @@ func main() {
 	fs.StringVar(&o.dataDir, "data", "", "data `dir`ectory (default $XDG_DATA_HOME/taskmoth or ~/.local/share/taskmoth)")
 	fs.BoolVar(&o.ascii, "ascii", false, "draw with ASCII instead of Unicode symbols (also TASKMOTH_ASCII=1)")
 	fs.BoolVar(&o.version, "version", false, "print the version and exit")
+	fs.StringVar(&o.export, "export", "", "print every task and project as `format` ("+strings.Join(export.Formats, " or ")+") and exit")
+	fs.StringVar(&o.output, "output", "", "with --export, write to `file` instead of standard output")
 	fs.BoolVar(&o.gallery, "gallery", false, "show the widget gallery (development)")
 	fs.BoolVar(&o.seed, "seed", false, "load the sample data from the designs into an empty data directory (development)")
 	fs.StringVar(&o.list, "list", "", "print a view and exit: "+strings.Join(listViews, ", ")+", or project:<name> (development)")
@@ -71,6 +76,10 @@ func main() {
 		os.Exit(2)
 	}
 	o.ascii = o.ascii || envTrue(os.Getenv("TASKMOTH_ASCII"))
+	if err := checkExportFlags(&o); err != nil {
+		fmt.Fprintln(os.Stderr, "taskmoth:", err)
+		os.Exit(2)
+	}
 	if o.version {
 		bi, _ := debug.ReadBuildInfo()
 		fmt.Println(versionString(version, commit, date, bi))
@@ -110,6 +119,9 @@ func run(o options) error {
 	if o.gallery {
 		_, err = tea.NewProgram(gallery.New(t)).Run()
 		return err
+	}
+	if o.export != "" {
+		return runExport(o, dirs.DataDir) // read-only: no lock (G10.4)
 	}
 	if o.list != "" && !o.seed {
 		return runDev(o, dirs.DataDir) // read-only: no lock (G8.4)

@@ -19,7 +19,8 @@ taskmoth is a keyboard-driven TUI task manager in Go (Bubble Tea v2, Lip Gloss v
 ## Layout
 
 ```
-cmd/taskmoth/        entry point, flags (--data, --ascii, --version; hidden: --gallery, --seed, --list),
+cmd/taskmoth/        entry point, flags (--data, --ascii, --version, --export/--output (G10.1);
+                     hidden: --gallery, --seed, --list),
                      theme choice (TASKMOTH_THEME > config.toml > default)
 internal/paths/      XDG data/config directory resolution
 internal/config/     config.toml settings (theme; G9.1)
@@ -29,6 +30,7 @@ internal/nlp/        quick-add parser (PLAN.md Appendix A), ParseDate, ParseDura
 internal/store/      Store interface; SQLite implementation + embedded migrations, integrity
                      check (G8.5) and pre-migration backups (G8.2);
                      in-memory implementation for UI tests (both pass the same contract tests)
+internal/export/     CSV and JSON export of every task and project (G10.1–G10.4; no UI or storage imports)
 internal/seed/       sample data from the designs (taskmoth --seed)
 internal/ui/         root Bubble Tea model (app.go): store, clock, key chords, view switching;
                      dialogs.go: dialog stack, Goto Project, Create New Project, confirmations;
