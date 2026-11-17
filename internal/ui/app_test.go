@@ -140,9 +140,16 @@ func run(a *App, cmd tea.Cmd) {
 	}
 }
 
+// newApp starts the app on the Dracula theme, which the goldens were
+// reviewed against in Figma's colours.
 func newApp(t testing.TB, s store.Store, clk *clock, w, h int) *App {
 	t.Helper()
-	a := NewApp(theme.New(false), s, clk.Now)
+	return newAppTheme(t, theme.New(theme.Dracula(), false), s, clk, w, h)
+}
+
+func newAppTheme(t testing.TB, th theme.Theme, s store.Store, clk *clock, w, h int) *App {
+	t.Helper()
+	a := NewApp(th, s, clk.Now)
 	a.Update(tea.WindowSizeMsg{Width: w, Height: h})
 	run(a, a.load(true))
 	return a

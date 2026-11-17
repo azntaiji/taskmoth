@@ -72,7 +72,7 @@ func (a *App) handleSearchInput(msg tea.KeyPressMsg) tea.Cmd {
 }
 
 // searchBar replaces the status bar in Search: the view badge, then the
-// query input on statusbar/bg with a text/warning placeholder (40:17331),
+// query input on statusbar/bg with a faded statusbar/fg placeholder (40:17331, G9.9),
 // and at the right a hint for what enter and esc do from here (G7.4).
 func (a *App) searchBar(t theme.Theme) string {
 	bg := t.Style(t.C.Status.Fg, t.C.Status.Bg)
@@ -84,7 +84,7 @@ func (a *App) searchBar(t theme.Theme) string {
 	}
 	right := searchHints(t, hints)
 	s.input.SetSize(max(a.width-w.Width(left)-w.Width(right)-3, w.PromptWidth+1), 1)
-	return w.Spread(left+s.input.ViewOn(t, t.C.Status.Bg, t.C.TextWarning), right+w.Blank(bg, 1), a.width, bg)
+	return w.Spread(left+s.input.ViewOn(t, t.C.TextOnInput, t.C.Status.Bg, t.FadeOn(t.C.Status.Fg, t.C.Status.Bg)), right+w.Blank(bg, 1), a.width, bg)
 }
 
 // searchHints draws key hints on statusbar/bg: keys bold in key/key, labels

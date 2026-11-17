@@ -1,0 +1,24 @@
+taskmoth ▸ Today                                       tues · 2026-11-10 · 15:26
+                                                                               │
+▶ [ ]  P1  File insurance reimbursements                                today  │
+           #oneofftasks  ~2h  s:2026-11-10                                     │
+                                                                               │
+  [ ]  P2  Pack Azalea's books in backpack                              today  │
+           #parenting  ~1h                                                     │
+                                                                               │
+  [ ]  P2  Practice meditating                                          today  │
+           #reminders  ~30m                                                    │
+                                                                               │
+  [ ]  P3  Get eggs                                                   overdue  │
+           #groceries  ~15m  s:2026-11-09                                      │
+                                                                               │
+  [x]  P3  Finish creating task management TUI app. Then put it int…  overdue  │
+           #homelab-tech  ~3.5h  s:2026-11-07                                  │
+                                                                               │
+  [x]  P4  Watch Tales of the Loop                                      today  │
+           #movies-tv  ~45m  s:2026-11-10                                      │
+                                                                               │
+                                                                               │
+  Today   4/6 tasks · ~8h total · ~3.75h remaining                   s:priority 
+ q add  space done  e edit/view  x archive  s sort  ? shortcuts  / search       
+ g i inbox  g t today  g u upcoming  g p projects  g o overdue  g a all         

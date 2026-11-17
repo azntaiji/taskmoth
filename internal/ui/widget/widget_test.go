@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	uni   = theme.New(false)
-	ascii = theme.New(true)
+	uni   = theme.New(theme.Dracula(), false)
+	ascii = theme.New(theme.Dracula(), true)
 )
 
 func TestTruncateIsWidthAware(t *testing.T) {

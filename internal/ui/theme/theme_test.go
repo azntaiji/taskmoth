@@ -61,10 +61,10 @@ func colourFields(c Colors) map[string]color.Color {
 // resolves it to in the Dracula palette (file uRWYa0RRojip50i2lWNdKx,
 // collection "Semantic / Color"). It also fails if a token is left nil.
 func TestSemanticMatchesFigma(t *testing.T) {
-	c := Default()
+	c := Semantic(Dracula())
 	want := map[string]string{
 		"C.Bg": "22212c", "C.BgInput": "504c67",
-		"C.Text": "ffffff", "C.TextTitle": "ffffff", "C.TextMuted": "504c67", "C.TextAccent": "9282f7",
+		"C.Text": "ffffff", "C.TextOnInput": "ffffff", "C.TextTitle": "ffffff", "C.TextMuted": "504c67", "C.TextAccent": "9282f7",
 		"C.TextLink": "80ffea", "C.TextSuccess": "8aff80", "C.TextWarning": "ffff80",
 		"C.TextError": "ff9580", "C.TextInfo": "ff80bf",
 		"C.SelectionBg": "9282f7", "C.SelectionFg": "ffffff",
@@ -105,7 +105,7 @@ func TestSemanticMatchesFigma(t *testing.T) {
 }
 
 func TestDimmedBlendsEveryColourButBg(t *testing.T) {
-	n := New(false)
+	n := New(Dracula(), false)
 	d := n.Dimmed()
 	if !d.IsDimmed() || n.IsDimmed() {
 		t.Fatal("IsDimmed wrong")
@@ -163,5 +163,76 @@ func TestASCIIGlyphsArePureASCII(t *testing.T) {
 				t.Errorf("ASCII glyph %q contains non-ASCII rune %U", s, r)
 			}
 		}
+	}
+}
+
+// TestANSIPaletteFollowsFigmaSlots checks the default theme (G9.2, G9.4):
+// every token is its Figma slot's ANSI colour, except those aliased to
+// base/fg or base/bg, which are the terminal's defaults, and the
+// readability changes of G9.6–G9.8.
+func TestANSIPaletteFollowsFigmaSlots(t *testing.T) {
+	ansiC, rgb := colourFields(Semantic(ANSI())), colourFields(Semantic(Dracula()))
+	d := Dracula()
+	baseFg := map[string]bool{"C.Text": true, "C.TextTitle": true, "C.ScrollThumb": true, "C.Reverse.Bg": true}
+	baseBg := map[string]bool{"C.Bg": true, "C.Reverse.Fg": true,
+		"C.Badges[0].Fg": true, "C.Badges[2].Fg": true, "C.Badges[3].Fg": true,
+		"C.SelectionFg": true} // G9.6
+	faint := map[string]bool{"C.TextMuted": true, "C.KeyLabel": true} // G9.7
+	for name, c := range ansiC {
+		switch {
+		case name == "C.TextOnInput": // G9.8
+			if c != ansiC["C.Status.Fg"] {
+				t.Errorf("TextOnInput should be statusbar/fg")
+			}
+		case faint[name]:
+			if c != (faded{termFg}) {
+				t.Errorf("%s should be faint terminal text", name)
+			}
+		case baseFg[name]:
+			if c != termFg {
+				t.Errorf("%s should be the terminal's foreground", name)
+			}
+		case baseBg[name]:
+			if c != termBg {
+				t.Errorf("%s should be the terminal's background", name)
+			}
+		default:
+			idx, ok := c.(ansi.BasicColor)
+			if !ok {
+				t.Errorf("%s = %T, want an ANSI colour", name, c)
+				continue
+			}
+			if hex(d.Color(Slot(idx))) != hex(rgb[name]) {
+				t.Errorf("%s is slot %d, but Figma aliases it to %s", name, idx, hex(rgb[name]))
+			}
+		}
+	}
+}
+
+func TestANSIStyle(t *testing.T) {
+	th := New(ANSI(), false)
+	render := func(st lipgloss.Style) string { return st.Render("x") }
+	tests := []struct {
+		name string
+		got  string
+		want string
+	}{
+		{"terminal defaults are left unset", render(th.Base()), "x"},
+		{"slot colours are SGR", render(th.Style(th.C.TextError, th.C.Bg)), "\x1b[31mx\x1b[m"},
+		{"base/bg as text uses reverse", render(th.Style(th.C.Reverse.Fg, th.C.Reverse.Bg)), "\x1b[7mx\x1b[m"},
+		{"badge text on a fill uses reverse", render(th.Style(th.C.Badges[ToneSuccess].Fg, th.C.Badges[ToneSuccess].Bg)), "\x1b[7;32mx\x1b[m"},
+		{"faded text is faint", render(th.Style(th.Fade(th.C.Text), th.C.Bg)), "\x1b[2mx\x1b[m"},
+		{"the dimmed theme is faint", render(th.Dimmed().Style(th.C.TextLink, th.C.Bg)), "\x1b[2;36mx\x1b[m"},
+	}
+	for _, tt := range tests {
+		if tt.got != tt.want {
+			t.Errorf("%s: %q, want %q", tt.name, tt.got, tt.want)
+		}
+	}
+	if p := th.FadePair(th.C.Badges[ToneError]); p != th.C.Badges[ToneNeutral] {
+		t.Error("a faded filled badge should become the neutral badge")
+	}
+	if p := th.FadePair(th.C.Badges[ToneMode]); p.Bg != th.C.Badges[ToneMode].Bg {
+		t.Error("the P4 badge on slot 0 should keep its background when faded")
 	}
 }

@@ -34,7 +34,8 @@ func Button(t theme.Theme, label string, tone ButtonTone, focused, disabled bool
 		fg = t.C.TextSuccess
 	}
 	if disabled {
-		fg, bg = t.Fade(fg), t.Fade(bg)
+		p := t.FadePair(theme.Pair{Fg: fg, Bg: bg})
+		fg, bg = p.Fg, p.Bg
 	}
 	return t.Style(fg, bg).Render("[ " + label + " ]")
 }

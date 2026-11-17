@@ -29,7 +29,10 @@ type Colors struct {
 	Bg      color.Color // bg/default
 	BgInput color.Color // bg/input (shaded input fields)
 
-	Text        color.Color // text/default
+	Text color.Color // text/default
+	// TextOnInput is text on bg/input and statusbar/bg: text/default, or
+	// statusbar/fg in the default theme (decision G9.8). Not a Figma token.
+	TextOnInput color.Color
 	TextTitle   color.Color // text/title
 	TextMuted   color.Color // text/muted
 	TextAccent  color.Color // text/accent
@@ -60,8 +63,23 @@ type Colors struct {
 }
 
 // Semantic resolves the semantic tokens against a palette, following the
-// aliases in the Figma "Semantic / Color" collection exactly.
+// aliases in the Figma "Semantic / Color" collection exactly. The ANSI
+// palette then makes the changes in decisions G9.6–G9.8, which keep text
+// readable whatever colours the terminal's scheme assigns to the slots.
 func Semantic(p Palette) Colors {
+	c := figmaSemantic(p)
+	c.TextOnInput = c.Text
+	if p.ANSI {
+		c.SelectionFg = termBg // G9.6
+		muted := faded{termFg} // G9.7
+		c.TextMuted, c.KeyLabel = muted, muted
+		c.TextOnInput = c.Status.Fg // G9.8
+	}
+	return c
+}
+
+// figmaSemantic is the Figma aliasing, unchanged.
+func figmaSemantic(p Palette) Colors {
 	s := p.Color
 	fg, bg := p.Fg(), p.Bg()
 	return Colors{
@@ -105,6 +123,3 @@ func Semantic(p Palette) Colors {
 		},
 	}
 }
-
-// Default returns the semantic colours resolved against the Dracula palette.
-func Default() Colors { return Semantic(Dracula()) }

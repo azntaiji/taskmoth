@@ -13,7 +13,8 @@ func Badge(t theme.Theme, tone theme.Tone, text string, dim bool) string {
 	p := t.C.Badges[tone]
 	fg, bg := p.Fg, p.Bg
 	if dim {
-		fg, bg = t.Fade(fg), t.Fade(bg)
+		p := t.FadePair(theme.Pair{Fg: fg, Bg: bg})
+		fg, bg = p.Fg, p.Bg
 	}
 	return t.Style(fg, bg).Bold(true).Render(" " + text + " ")
 }
