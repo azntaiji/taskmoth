@@ -4,7 +4,7 @@ taskmoth ▸ #oneofftasks                                tues · 2026-11-10 · 1
            ~30m  s:2026-11-10                                                  │
           ┌─ Goto Project ───────────────────────────────────────────┐         │
   [ ]  P2 │                                                         ││6-11-20  │
-          │ Select a project to open its list:                      ││         │
+          │ >  Select a project to open its list:                   ││         │
           │                                                         ││         │
   [ ]  P2 │   #groceries                                            ││6-11-07  │
           │ ▶ #oneofftasks                                          ││         │
@@ -15,7 +15,7 @@ taskmoth ▸ #oneofftasks                                tues · 2026-11-10 · 1
   [ ]  P3 │                                                         ││6-11-15  │
           │                                                         ││         │
           │                                                         ││         │
-  [ ]  P4 │ ↑ / ↓ select  enter select  esc cancel  n new  x archi  ││6-11-14  │
+  [ ]  P4 │ enter select  esc cancel  ctrl+n new  ctrl+x archive    ││6-11-14  │
           └──────────────────────────────────────────────────────────┘         │
                                                                                │
                                                                                │

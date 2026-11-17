@@ -94,3 +94,28 @@ func SortSearch(tasks []Task, nameHit func(Task) bool) {
 		return cmp.Compare(a.ID, b.ID)
 	})
 }
+
+// MatchProjects filters projects by a typed filter (decision G11.3): case-
+// insensitive, a leading '#' ignored. Names that start with the filter come
+// first, then names that contain it, each A–Z. An empty filter keeps every
+// project in its original order.
+func MatchProjects(ps []Project, filter string) []Project {
+	q := NormalizeProjectName(filter)
+	if q == "" {
+		return ps
+	}
+	var prefix, contains []Project
+	for _, p := range ps {
+		name := strings.ToLower(p.Name)
+		switch {
+		case strings.HasPrefix(name, q):
+			prefix = append(prefix, p)
+		case strings.Contains(name, q):
+			contains = append(contains, p)
+		}
+	}
+	byName := func(a, b Project) int { return cmp.Compare(a.Name, b.Name) }
+	slices.SortFunc(prefix, byName)
+	slices.SortFunc(contains, byName)
+	return append(prefix, contains...)
+}

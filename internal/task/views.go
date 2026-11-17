@@ -2,7 +2,7 @@ package task
 
 // The list-view filters. Each reports whether an open task belongs in a view
 // on the given local date. Archived tasks belong in no view except Archive.
-// Use Listed to also keep tasks completed today (decision G3.1).
+// Use Listed to also list completed tasks (decisions G3.1, G12.1).
 
 import "time"
 
@@ -15,18 +15,63 @@ func CompletedOn(t Task, now time.Time) bool {
 	return t.Done() && DateOf(t.CompletedAt.In(now.Location())) == DateOf(now)
 }
 
-// Listed reports whether t appears in a view whose open-task filter is in.
-// Tasks completed today stay listed until midnight if they would belong
-// there when open (decisions G3.1, G3.5). Archived tasks never appear.
-func Listed(t Task, now time.Time, in func(Task) bool) bool {
+// CompletedMode is which completed tasks the lists show (decision G12.1).
+// `c` steps through the modes in this order; the zero value is the default.
+type CompletedMode int
+
+// Completed modes.
+const (
+	// CompletedToday lists tasks completed today, until midnight (G3.1).
+	CompletedToday CompletedMode = iota
+	// CompletedAll lists every completed task that belongs to the list;
+	// date-based lists (Today, Upcoming, Overdue) still list only today's.
+	CompletedAll
+	// CompletedHidden lists no completed tasks.
+	CompletedHidden
+)
+
+var completedModeNames = [...]string{"today", "all", "hidden"}
+
+// String names the mode as stored in settings.
+func (m CompletedMode) String() string {
+	if m < 0 || int(m) >= len(completedModeNames) {
+		return completedModeNames[0]
+	}
+	return completedModeNames[m]
+}
+
+// ParseCompletedMode parses a name produced by CompletedMode.String.
+func ParseCompletedMode(s string) (CompletedMode, bool) {
+	for i, n := range completedModeNames {
+		if n == s {
+			return CompletedMode(i), true
+		}
+	}
+	return CompletedToday, false
+}
+
+// Next returns the mode after m: today → all → hidden → today.
+func (m CompletedMode) Next() CompletedMode { return (m + 1) % CompletedMode(len(completedModeNames)) }
+
+// Listed reports whether t appears in a view whose open-task filter is in,
+// showing completed tasks as mode says (G12.1). A completed task is listed
+// only if it would belong there when open (G3.5). dated marks the date-based
+// views, which list only today's completions even in CompletedAll. Archived
+// tasks never appear.
+func Listed(t Task, now time.Time, in func(Task) bool, mode CompletedMode, dated bool) bool {
 	if t.Archived() {
 		return false
 	}
 	if !t.Done() {
 		return in(t)
 	}
-	if !CompletedOn(t, now) {
+	switch {
+	case mode == CompletedHidden:
 		return false
+	case mode == CompletedToday || dated:
+		if !CompletedOn(t, now) {
+			return false
+		}
 	}
 	reopened := t
 	reopened.CompletedAt = time.Time{}

@@ -70,7 +70,7 @@ var (
 		gotoView("i", view.Inbox, "inbox"), gotoView("t", view.Today, "today"), gotoView("u", view.Upcoming, "upcoming"),
 		{keys: []string{"p"}, show: func(theme.Glyphs) string { return "g p" }, short: "projects", long: "projects",
 			act: func(a *App, l *view.List, _ string) tea.Cmd {
-				g := &gotoDialog{}
+				g := newGotoDialog()
 				if l.Spec.Kind == view.Project {
 					g.selectProject(a, l.Spec.Project) // start on the project being viewed
 				}
@@ -79,7 +79,7 @@ var (
 			}},
 		gotoView("o", view.Overdue, "overdue"), gotoView("a", view.All, "all"),
 		gotoView("s", view.Someday, "someday"),
-		gotoView("c", view.Completed, "completed"), gotoView("x", view.Archive, "archive"),
+		gotoView("x", view.Archive, "archive"),
 	}}
 
 	listGroup = keyGroup{"Within Lists", []binding{
@@ -99,6 +99,14 @@ var (
 			}
 			return a.saveSort(l, l.NextSort())
 		}},
+		{keys: []string{"o"}, short: "group", long: "cycle grouping", act: func(a *App, l *view.List, _ string) tea.Cmd {
+			if len(l.Spec.Groups) == 0 {
+				return nil // Inbox, Upcoming, the Archive and Search don't group (G13.1)
+			}
+			return a.saveGroup(l, l.NextGroup())
+		}},
+		{keys: []string{"c"}, short: "completed", long: "cycle completed",
+			act: func(a *App, _ *view.List, _ string) tea.Cmd { return a.cycleCompleted() }},
 		{keys: []string{"/"}, short: "search", long: "search for task", act: func(a *App, _ *view.List, _ string) tea.Cmd {
 			a.openSearch()
 			return nil

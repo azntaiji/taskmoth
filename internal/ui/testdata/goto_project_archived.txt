@@ -4,7 +4,7 @@ taskmoth ▸ Today                                       tues · 2026-11-10 · 1
                                                                                │
           ┌─ Goto Project ───────────────────────────────────────────┐         │
           │                                                         ││         │
-          │ Select a project to open its list:                      ││         │
+          │ >  Select a project to open its list:                   ││         │
           │                                                         ││         │
           │   #groceries                                            ││         │
           │ ▶ #work                                                 ││         │
@@ -15,7 +15,7 @@ taskmoth ▸ Today                                       tues · 2026-11-10 · 1
           │                                                         ││         │
           │                                                         ││         │
           │                                                         ││         │
-          │ ↑ / ↓ select  enter select  esc cancel  n new  x archi  ││         │
+          │ enter select  esc cancel  ctrl+n new  ctrl+x archive    ││         │
           └──────────────────────────────────────────────────────────┘         │
                                                                                │
                                                                                │

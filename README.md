@@ -37,9 +37,11 @@ Press `q` and type. Dates, projects, priorities and durations are picked out as 
 ### Lists that sort themselves out
 
 - **Today**: due, overdue or already started. **Upcoming**: the next 7 days, grouped by day. **Someday**: everything without a due date.
-- **Overdue**, **Inbox**, **All**, **Completed**, the **Archive**, and a list per **#project**, each a `g` chord away.
+- **Overdue**, **Inbox**, **All**, the **Archive**, and a list per **#project**, each a `g` chord away. `g p` lists your projects; type to filter them.
 - Two-line rows with priority and due badges, duration and start date. The status bar totals the time left in the view.
-- `s` cycles the sort (priority, due, start, duration, name), remembered per view. Completed tasks stay visible, dimmed, until the end of the day.
+- `s` cycles the sort (priority, due, start, duration, name), remembered per view.
+- `o` groups Today, All, Someday, Overdue and project lists under headers: by project, priority, due date or duration (each list offers the ones that make sense). Also remembered per view.
+- `c` cycles completed tasks in every list: today's (dimmed, until midnight), all of them, or hidden. The choice is remembered.
 
 <p align="center">
   <img src="docs/images/today.png" alt="The Today view" width="49%">
@@ -84,7 +86,7 @@ An empty Inbox, Someday list or project gets a moth and a note for the day. Clea
 
 ### Planned
 
-Grouping options for lists, search in the project picker, a Homebrew tap, recurring tasks, times of day, user themes, time tracking and analytics. See [PLAN.md §7](PLAN.md#7-future-features-out-of-scope).
+A Homebrew tap, recurring tasks, times of day, user themes, time tracking and analytics. See [PLAN.md §7](PLAN.md#7-future-features-out-of-scope).
 
 ## Install
 
@@ -150,10 +152,12 @@ Quit with `ctrl+q` or `ctrl+c` (`q` is "add task"). Press `?` for every key.
 | `n` `d` `v` `r` `t` `y` `p` | edit name, description, project, start date, due date, duration, priority |
 | `space` | complete (then select the next open task) / reopen the selected task |
 | `s` | cycle the sort (priority → due → start → duration → name) |
+| `o` | cycle grouping: Today by project → priority → duration; All, Someday and Overdue by project → priority → due → duration; projects by priority → due → duration; then none |
+| `c` | cycle completed tasks in every list: today's → all → hidden (Today, Upcoming and Overdue only ever show today's) |
 | `x` | archive the selected task (in the Archive: delete forever) |
-| `u` | unarchive (in the Archive and in Goto Project) |
-| `g t` `g i` `g u` `g o` `g s` `g a` `g c` `g x` | Today, Inbox, Upcoming, Overdue, Someday, All, Completed, Archive |
-| `g p` | Goto Project: `enter` open, `n` new project, `x` archive, `u` unarchive |
+| `u` | unarchive (in the Archive) |
+| `g t` `g i` `g u` `g o` `g s` `g a` `g x` | Today, Inbox, Upcoming, Overdue, Someday, All, Archive |
+| `g p` | Goto Project: type to filter, `enter` open, `ctrl+n` new project, `ctrl+x` archive, `ctrl+u` unarchive, `esc` clear the filter / close |
 | `/` | search (see below) |
 | `?` | keyboard shortcuts (`esc` or `?` closes) |
 | `esc` | cancel a pending `g`, close a dialog, or go back |
@@ -246,7 +250,7 @@ cmd/taskmoth/        entry point and flags
 internal/paths/      XDG data and config directories
 internal/config/     config.toml (theme)
 internal/lock/       single-instance lock on the data directory
-internal/task/       domain model, view filters, sorting (pure; no UI or storage)
+internal/task/       domain model, view filters, sorting, grouping (pure; no UI or storage)
 internal/nlp/        quick-add parser, date phrases, durations (pure)
 internal/store/      SQLite store, migrations, integrity check and backups, in-memory store for tests
 internal/export/     CSV and JSON export

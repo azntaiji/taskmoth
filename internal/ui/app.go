@@ -21,7 +21,7 @@ import (
 // Goto Project).
 var fixedViews = map[string]view.Kind{
 	"t": view.Today, "i": view.Inbox, "u": view.Upcoming, "o": view.Overdue,
-	"a": view.All, "c": view.Completed, "x": view.Archive, "s": view.Someday,
+	"a": view.All, "x": view.Archive, "s": view.Someday,
 }
 
 // App is the root model: it owns the store, the list views, the clock, the
@@ -42,6 +42,7 @@ type App struct {
 	lists       map[view.Kind]*view.List
 	projectView map[task.ID]*view.List
 	current     *view.List
+	completed   task.CompletedMode // which completed tasks every list shows (G12.1)
 
 	dialogs             []dialog
 	selectAfterLoad     task.ID   // project to select in Goto Project once reloaded
@@ -68,16 +69,21 @@ func NewApp(t theme.Theme, s store.Store, now func() time.Time) *App {
 // Messages.
 type (
 	loadedMsg struct {
-		tasks    []task.Task
-		projects []task.Project
-		sorts    map[string]task.SortKey // view Key → saved sort; first load only
+		tasks     []task.Task
+		projects  []task.Project
+		sorts     map[string]task.SortKey // view Key → saved sort; first load only
+		groups    map[string]task.GroupBy // view Key → saved grouping; first load only
+		completed *task.CompletedMode     // saved Completed mode; first load only
 	}
-	reloadMsg      struct{}
-	errMsg         struct{ err error }
-	tickMsg        time.Time
+	reloadMsg struct{}
+	errMsg    struct{ err error }
+	tickMsg   time.Time
+	// projectSortMsg carries a project list's saved sort and grouping,
+	// read when the list is first opened.
 	projectSortMsg struct {
-		id  task.ID
-		key task.SortKey
+		id    task.ID
+		key   *task.SortKey
+		group *task.GroupBy
 	}
 )
 
@@ -108,12 +114,26 @@ func (a *App) load(withSorts bool) tea.Cmd {
 		if err != nil {
 			return errMsg{err}
 		}
-		msg := loadedMsg{tasks: tasks, projects: ps, sorts: map[string]task.SortKey{}}
+		msg := loadedMsg{tasks: tasks, projects: ps, sorts: map[string]task.SortKey{}, groups: map[string]task.GroupBy{}}
 		for _, k := range keys {
 			if key, ok, err := savedSort(ctx, s, k); err != nil {
 				return errMsg{err}
 			} else if ok {
 				msg.sorts[k] = key
+			}
+			if g, ok, err := savedGroup(ctx, s, k); err != nil {
+				return errMsg{err}
+			} else if ok {
+				msg.groups[k] = g
+			}
+		}
+		if len(keys) > 0 {
+			v, err := s.GetSetting(ctx, completedSetting)
+			if err != nil && !errors.Is(err, store.ErrNotFound) {
+				return errMsg{err}
+			}
+			if m, ok := task.ParseCompletedMode(v); ok {
+				msg.completed = &m
 			}
 		}
 		return msg
@@ -130,6 +150,39 @@ func savedSort(ctx context.Context, s store.Store, viewKey string) (task.SortKey
 	}
 	key, ok := task.ParseSortKey(v)
 	return key, ok, nil
+}
+
+// groupKey is a list's grouping in stored settings (G13.1).
+func groupKey(l *view.List) string { return "group." + l.Spec.Key }
+
+func savedGroup(ctx context.Context, s store.Store, viewKey string) (task.GroupBy, bool, error) {
+	v, err := s.GetSetting(ctx, "group."+viewKey)
+	if errors.Is(err, store.ErrNotFound) {
+		return task.GroupNone, false, nil
+	}
+	if err != nil {
+		return task.GroupNone, false, err
+	}
+	g, ok := task.ParseGroupBy(v)
+	return g, ok, nil
+}
+
+// saveGroup stores l's grouping.
+func (a *App) saveGroup(l *view.List, g task.GroupBy) tea.Cmd {
+	s, name := a.store, groupKey(l)
+	return func() tea.Msg {
+		if err := s.SetSetting(context.Background(), name, g.String()); err != nil {
+			return errMsg{fmt.Errorf("saving grouping: %w", err)}
+		}
+		return nil
+	}
+}
+
+// prepare gives a list the App-wide state it reads: the Completed mode
+// (G12.1) and project names for project groups (G13).
+func (a *App) prepare(l *view.List) {
+	l.Completed = a.completed
+	l.ProjectName = func(id task.ID) string { return a.projects[id] }
 }
 
 // tick fires at the start of the next minute, for the header clock and for
@@ -155,7 +208,33 @@ func (a *App) allLists() []*view.List {
 
 func (a *App) refresh() {
 	for _, l := range a.allLists() {
+		a.prepare(l)
 		l.SetTasks(a.tasks, a.clock)
+	}
+}
+
+// completedSetting stores the Completed mode (G12.2).
+const completedSetting = "completed"
+
+// cycleCompleted steps the Completed mode for every list (G12.1), says so in
+// the status bar and saves it.
+func (a *App) cycleCompleted() tea.Cmd {
+	a.completed = a.completed.Next()
+	a.refresh()
+	switch a.completed {
+	case task.CompletedAll:
+		a.message = "Showing all completed tasks."
+	case task.CompletedHidden:
+		a.message = "Hiding completed tasks."
+	default:
+		a.message = "Showing tasks completed today."
+	}
+	s, m := a.store, a.completed
+	return func() tea.Msg {
+		if err := s.SetSetting(context.Background(), completedSetting, m.String()); err != nil {
+			return errMsg{fmt.Errorf("saving completed setting: %w", err)}
+		}
+		return nil
 	}
 }
 
@@ -203,7 +282,12 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, a.openProject(msg.id)
 	case projectSortMsg:
 		if l, ok := a.projectView[msg.id]; ok {
-			l.SetSort(msg.key)
+			if msg.key != nil {
+				l.SetSort(*msg.key)
+			}
+			if msg.group != nil {
+				l.SetGroup(*msg.group)
+			}
 		}
 	case projectCreatedMsg:
 		a.pop() // the Create New Project dialog
@@ -255,6 +339,12 @@ func (a *App) applyLoad(msg loadedMsg) {
 		if k, ok := msg.sorts[l.Spec.Key]; ok {
 			l.Sort = k
 		}
+		if g, ok := msg.groups[l.Spec.Key]; ok {
+			l.SetGroup(g)
+		}
+	}
+	if msg.completed != nil {
+		a.completed = *msg.completed
 	}
 	// Drop project views whose project is gone or archived; leave them for
 	// Today if they were showing.
@@ -299,19 +389,32 @@ func (a *App) openProject(id task.ID) tea.Cmd {
 		}
 		l := view.NewList(view.ProjectSpec(p))
 		l.SetHeight(a.bodyHeight())
+		a.prepare(l)
 		l.SetTasks(a.tasks, a.clock)
 		a.projectView[id] = l
 		a.current = l
 		s, key := a.store, l.Spec.Key
 		return func() tea.Msg {
-			k, ok, err := savedSort(context.Background(), s, key)
+			ctx := context.Background()
+			msg := projectSortMsg{id: id}
+			k, ok, err := savedSort(ctx, s, key)
 			if err != nil {
 				return errMsg{err}
 			}
-			if !ok {
+			if ok {
+				msg.key = &k
+			}
+			g, ok, err := savedGroup(ctx, s, key)
+			if err != nil {
+				return errMsg{err}
+			}
+			if ok {
+				msg.group = &g
+			}
+			if msg.key == nil && msg.group == nil {
 				return nil
 			}
-			return projectSortMsg{id: id, key: k}
+			return msg
 		}
 	}
 	return nil

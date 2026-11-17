@@ -3,6 +3,7 @@ package view
 import (
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/azntaiji/taskmoth/internal/task"
@@ -20,7 +21,6 @@ const (
 	Upcoming
 	Overdue
 	All
-	Completed
 	Archive
 	Someday
 	Project
@@ -37,12 +37,22 @@ type Spec struct {
 	Key string
 	// ShowSort shows the sort at the right of the status bar.
 	ShowSort bool
-	// Select reports whether a task is listed.
+	// Open reports whether an open task belongs in the list. The list adds
+	// completed tasks as its Completed mode says (G12.1), so views built on
+	// Open answer to `c`. Dated marks the date-based views (Today, Upcoming,
+	// Overdue), which list only today's completions even in CompletedAll.
+	Open  func(t task.Task, today task.Date) bool
+	Dated bool
+	// Select, for lists without Open (Archive, Search), reports whether a
+	// task is listed; `c` doesn't affect them.
 	Select func(t task.Task, now time.Time) bool
 	// Badge draws a row's right-hand badge.
 	Badge func(th theme.Theme, t task.Task, now time.Time) string
 	// Group, if set, groups rows under day headers (Upcoming, G4.1).
 	Group func(t task.Task, today task.Date) (task.Date, bool)
+	// Groups, if set, is the grouping cycle `o` steps through (G13.1); its
+	// first entry is the default. Lists without it don't group.
+	Groups []task.GroupBy
 	// Cycle is the sort cycle; its first key is the default.
 	Cycle []task.SortKey
 	// Summary is the status bar message.
@@ -64,21 +74,13 @@ type Spec struct {
 	Order func(rows []task.Task)
 }
 
-// openView selects open tasks matching in, plus today's completions (G3.1).
-func openView(in func(t task.Task, today task.Date) bool) func(task.Task, time.Time) bool {
-	return func(t task.Task, now time.Time) bool {
-		today := task.DateOf(now)
-		return task.Listed(t, now, func(x task.Task) bool { return in(x, today) })
-	}
-}
-
 // SpecFor returns the Spec of a fixed (non-project) view.
 func SpecFor(k Kind) Spec {
 	switch k {
 	case Inbox:
 		return Spec{
 			Kind: Inbox, Title: "Inbox", Key: "inbox",
-			Select:  openView(func(t task.Task, _ task.Date) bool { return task.InInbox(t) }),
+			Open:    func(t task.Task, _ task.Date) bool { return task.InInbox(t) },
 			Badge:   dueDateBadge, // G6.11: standard rows, not the one-line design
 			Cycle:   task.DefaultCycle,
 			Summary: inboxSummary,
@@ -87,39 +89,29 @@ func SpecFor(k Kind) Spec {
 	case Upcoming:
 		return Spec{
 			Kind: Upcoming, Title: "Upcoming", Key: "upcoming", ShowSort: true,
-			Select: openView(task.InUpcoming), Badge: dueDateBadge, Group: task.UpcomingDay,
+			Open: task.InUpcoming, Dated: true, Badge: dueDateBadge, Group: task.UpcomingDay,
 			Cycle: task.DefaultCycle, Summary: openSummary,
 			Empty: "Nothing starting or due in the next 7 days.", EmptyHint: true,
 		}
 	case Overdue:
 		return Spec{
 			Kind: Overdue, Title: "Overdue", Key: "overdue", ShowSort: true,
-			Select: openView(task.InOverdue), Badge: dueWordBadge,
-			Cycle: task.DefaultCycle, Summary: openSummary,
+			Open: task.InOverdue, Dated: true, Badge: dueWordBadge,
+			Cycle: task.DefaultCycle, Groups: task.ListGroups, Summary: openSummary,
 			Empty: "Nothing overdue.", EmptyHint: true,
 		}
 	case All:
 		return Spec{
 			Kind: All, Title: "All", Key: "all", ShowSort: true,
-			Select: openView(func(t task.Task, _ task.Date) bool { return task.InAll(t) }), Badge: dueDateBadge,
-			Cycle: task.DefaultCycle, Summary: countSummary,
+			Open: func(t task.Task, _ task.Date) bool { return task.InAll(t) }, Badge: dueDateBadge,
+			Cycle: task.DefaultCycle, Groups: task.ListGroups, Summary: countSummary,
 			Empty: "No open tasks.", EmptyHint: true,
-		}
-	case Completed:
-		return Spec{
-			Kind: Completed, Title: "Completed", Key: "completed", ShowSort: true,
-			Select: func(t task.Task, _ time.Time) bool { return task.InCompleted(t) },
-			Badge:  completedBadge, Cycle: task.CompletedCycle,
-			Summary: func(_ theme.Theme, rows []task.Task) string {
-				return fmt.Sprintf("%d completed", len(rows))
-			},
-			Empty: "No completed tasks yet.",
 		}
 	case Someday:
 		return Spec{
 			Kind: Someday, Title: "Someday", Key: "someday", ShowSort: true,
-			Select: openView(func(t task.Task, _ task.Date) bool { return task.InSomeday(t) }),
-			Cycle:  task.DefaultCycle, Summary: openSummary,
+			Open:  func(t task.Task, _ task.Date) bool { return task.InSomeday(t) },
+			Cycle: task.DefaultCycle, Groups: task.ListGroups, Summary: openSummary,
 			Empty: "Every open task has a due date.", EmptyHint: true,
 			EmptyNote: SomedayNote, EmptyArt: MothArt,
 		}
@@ -136,8 +128,8 @@ func SpecFor(k Kind) Spec {
 	default:
 		return Spec{
 			Kind: Today, Title: "Today", Key: "today", ShowSort: true,
-			Select: openView(task.InToday), Badge: dueWordBadge,
-			Cycle: task.DefaultCycle, Summary: openSummary,
+			Open: task.InToday, Dated: true, Badge: dueWordBadge,
+			Cycle: task.DefaultCycle, Groups: task.TodayGroups, Summary: openSummary,
 			Empty: "Nothing due or started today.", EmptyHint: true, DoneNote: TodayDoneNote,
 		}
 	}
@@ -170,8 +162,8 @@ func SearchSpec(q task.Query, project func(task.ID) string) Spec {
 func ProjectSpec(p task.Project) Spec {
 	return Spec{
 		Kind: Project, Project: p.ID, Title: "#" + p.Name, Key: "project." + string(p.ID), ShowSort: true,
-		Select: openView(func(t task.Task, _ task.Date) bool { return task.InProject(t, p.ID) }),
-		Badge:  dueDateBadge, Cycle: task.DefaultCycle, Summary: countSummary,
+		Open:  func(t task.Task, _ task.Date) bool { return task.InProject(t, p.ID) },
+		Badge: dueDateBadge, Cycle: task.DefaultCycle, Groups: task.ProjectGroups, Summary: countSummary,
 		Empty: "#" + p.Name + " has no open tasks.", EmptyHint: true,
 		EmptyNote: func(today task.Date) string { return ProjectNote(p.Name, today) }, EmptyArt: MothArt,
 	}
@@ -253,11 +245,6 @@ func dueDateBadge(t theme.Theme, tk task.Task, now time.Time) string {
 	return w.DueLabel(t, s, tk.Due.String(), tk.Done())
 }
 
-// completedBadge shows the local completion date (G4.2).
-func completedBadge(t theme.Theme, tk task.Task, now time.Time) string {
-	return w.DueLabel(t, w.DueUpcoming, task.DateOf(tk.CompletedAt.In(now.Location())).String(), tk.Done())
-}
-
 // archivedBadge shows the local archive date (G4.7).
 func archivedBadge(t theme.Theme, tk task.Task, now time.Time) string {
 	return w.DueLabel(t, w.DueUpcoming, task.DateOf(tk.ArchivedAt.In(now.Location())).String(), tk.Done())
@@ -265,10 +252,11 @@ func archivedBadge(t theme.Theme, tk task.Task, now time.Time) string {
 
 // --- the list ---
 
-// block is one laid-out piece of the list: a task row or a day header.
+// block is one laid-out piece of the list: a task row or a group header.
 type block struct {
 	row    int       // index into rows, or -1 for a header
-	day    task.Date // header date
+	day    task.Date // Upcoming's header date (label is "")
+	label  string    // a grouping's header (G13)
 	start  int       // first line
 	height int
 }
@@ -277,7 +265,15 @@ type block struct {
 type List struct {
 	Spec Spec
 	Sort task.SortKey
+	// Completed is which completed tasks are listed (G12.1); lists without
+	// Spec.Open ignore it. The App keeps every list on the same mode.
+	Completed task.CompletedMode
+	// GroupBy is the list's grouping (G13.1), one of Spec.Groups.
+	GroupBy task.GroupBy
+	// ProjectName names a project for project groups; the App sets it.
+	ProjectName func(task.ID) string
 
+	hidden  int // completed tasks left out by CompletedHidden (G12.4)
 	rows    []task.Task
 	blocks  []block
 	lines   int // total lines
@@ -297,7 +293,21 @@ func NewList(spec Spec) *List {
 // the same task when it is still listed.
 func (l *List) SetTasks(all []task.Task, now time.Time) {
 	l.today = task.DateOf(now)
-	l.rows = task.Filter(all, func(t task.Task) bool { return l.Spec.Select(t, now) })
+	l.hidden = 0
+	if l.Spec.Open == nil {
+		l.rows = task.Filter(all, func(t task.Task) bool { return l.Spec.Select(t, now) })
+		l.order()
+		return
+	}
+	in := func(t task.Task) bool { return l.Spec.Open(t, l.today) }
+	l.rows = task.Filter(all, func(t task.Task) bool { return task.Listed(t, now, in, l.Completed, l.Spec.Dated) })
+	if l.Completed == task.CompletedHidden {
+		for _, t := range all {
+			if t.Done() && task.Listed(t, now, in, task.CompletedAll, l.Spec.Dated) {
+				l.hidden++
+			}
+		}
+	}
 	l.order()
 }
 
@@ -305,6 +315,44 @@ func (l *List) SetTasks(all []task.Task, now time.Time) {
 func (l *List) SetSort(k task.SortKey) {
 	l.Sort = k
 	l.order()
+}
+
+// SetGroup changes the grouping and regroups. A grouping the list doesn't
+// offer is ignored.
+func (l *List) SetGroup(g task.GroupBy) {
+	if !slices.Contains(l.Spec.Groups, g) {
+		return
+	}
+	l.GroupBy = g
+	l.order()
+}
+
+// NextGroup steps the grouping along the list's cycle and returns it. Lists
+// without groupings return GroupNone.
+func (l *List) NextGroup() task.GroupBy {
+	if len(l.Spec.Groups) == 0 {
+		return task.GroupNone
+	}
+	l.SetGroup(task.NextGroup(l.Spec.Groups, l.GroupBy))
+	return l.GroupBy
+}
+
+// group returns row r's header key and block, if the list is grouped:
+// Upcoming's day (G4.1) or the chosen grouping (G13).
+func (l *List) group(r task.Task) (key task.Group, b block, ok bool) {
+	switch {
+	case l.Spec.Group != nil:
+		d, _ := l.Spec.Group(r, l.today)
+		return task.Group{Label: d.String()}, block{row: -1, day: d}, true
+	case l.GroupBy != task.GroupNone:
+		name := l.ProjectName
+		if name == nil {
+			name = func(task.ID) string { return "" }
+		}
+		g := task.GroupOf(r, l.GroupBy, l.today, name)
+		return g, block{row: -1, label: g.Label}, true
+	}
+	return task.Group{}, block{}, false
 }
 
 // NextSort steps the sort along the view's cycle and returns the new key.
@@ -329,6 +377,13 @@ func (l *List) order() {
 			db, _ := l.Spec.Group(b, l.today)
 			return da.Compare(db)
 		})
+	} else if l.GroupBy != task.GroupNone {
+		// Groups in order; the sort (and open-before-completed) within each.
+		keys := make(map[task.ID]task.Group, len(l.rows))
+		for _, r := range l.rows {
+			keys[r.ID], _, _ = l.group(r)
+		}
+		slices.SortStableFunc(l.rows, func(a, b task.Task) int { return keys[a.ID].Compare(keys[b.ID]) })
 	}
 	l.layout()
 	l.reselect()
@@ -342,14 +397,13 @@ const rowHeight = 3
 func (l *List) layout() {
 	l.blocks = l.blocks[:0]
 	line := 0
-	var day task.Date
+	var last task.Group
 	for i, r := range l.rows {
-		if l.Spec.Group != nil {
-			if d, _ := l.Spec.Group(r, l.today); i == 0 || d != day {
-				day = d
-				l.blocks = append(l.blocks, block{row: -1, day: d, start: line, height: 2})
-				line += 2
-			}
+		if key, h, ok := l.group(r); ok && (i == 0 || key != last) {
+			last = key
+			h.start, h.height = line, 2
+			l.blocks = append(l.blocks, h)
+			line += 2
 		}
 		l.blocks = append(l.blocks, block{row: i, start: line, height: rowHeight})
 		line += rowHeight
@@ -485,8 +539,12 @@ func (l *List) Body(t theme.Theme, width int, projects map[task.ID]string, now t
 		}
 		var content []string
 		if b.row < 0 {
+			label := b.label
+			if label == "" {
+				label = Day(t, b.day)
+			}
 			content = []string{"", w.Blank(base, w.MarkerWidth) +
-				t.Style(t.C.TextAccent, t.C.Bg).Bold(true).Render(Day(t, b.day))}
+				t.Style(t.C.TextAccent, t.C.Bg).Bold(true).Render(w.Truncate(t, label, bw-w.MarkerWidth))}
 		} else {
 			content = append([]string{""}, l.renderRow(t, bw, l.rows[b.row], b.row == l.sel, projects, now)...)
 		}
@@ -581,6 +639,7 @@ func (l *List) StatusBar(t theme.Theme, width int, pending, message string) stri
 	if l.Spec.DoneNote != nil && l.allDone() {
 		msg = l.Spec.DoneNote(l.today)
 	}
+	msg += l.completedNote(t)
 	if message != "" {
 		msg = message
 	}
@@ -588,8 +647,45 @@ func (l *List) StatusBar(t theme.Theme, width int, pending, message string) stri
 	if l.Spec.ShowSort {
 		right = "s:" + l.Sort.String()
 	}
+	if l.GroupBy != task.GroupNone { // G13.4
+		right = strings.TrimSpace("o:" + l.GroupBy.String() + "  " + right)
+	}
 	if pending != "" {
 		right = pending
 	}
 	return w.StatusBar(t, width, l.Spec.Title, theme.ToneInfo, msg, right)
+}
+
+// completedNote is the status bar's note on the Completed mode (G12.4):
+// "· all done" in CompletedAll, "· 3 done hidden" when CompletedHidden is
+// leaving tasks out, and nothing in the default mode.
+func (l *List) completedNote(t theme.Theme) string {
+	if l.Spec.Open == nil {
+		return ""
+	}
+	dot := " " + t.G.Dot + " "
+	switch {
+	case l.Completed == task.CompletedAll && !l.Spec.Dated:
+		return dot + "all done"
+	case l.Completed == task.CompletedHidden && l.hidden > 0:
+		return dot + fmt.Sprintf("%d done hidden", l.hidden)
+	}
+	return ""
+}
+
+// Headers returns the group headers in display order (Upcoming's days as
+// dates). It's empty when the list isn't grouped.
+func (l *List) Headers() []string {
+	var out []string
+	for _, b := range l.blocks {
+		if b.row >= 0 {
+			continue
+		}
+		if b.label != "" {
+			out = append(out, b.label)
+		} else {
+			out = append(out, b.day.String())
+		}
+	}
+	return out
 }

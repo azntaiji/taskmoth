@@ -64,6 +64,10 @@ func keyText(s string) tea.KeyPressMsg {
 		return tea.KeyPressMsg{Code: 't', Mod: tea.ModCtrl}
 	case "ctrl+u":
 		return tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl}
+	case "ctrl+n":
+		return tea.KeyPressMsg{Code: 'n', Mod: tea.ModCtrl}
+	case "ctrl+x":
+		return tea.KeyPressMsg{Code: 'x', Mod: tea.ModCtrl}
 	case "ctrl+j":
 		return tea.KeyPressMsg{Code: 'j', Mod: tea.ModCtrl}
 	case "alt+enter":
@@ -352,7 +356,7 @@ func TestChords(t *testing.T) {
 	}
 	// Every g chord lands on its view (Phase 4 exit criterion).
 	for key, kind := range map[string]view.Kind{
-		"u": view.Upcoming, "o": view.Overdue, "a": view.All, "c": view.Completed, "x": view.Archive, "i": view.Inbox, "t": view.Today,
+		"u": view.Upcoming, "o": view.Overdue, "a": view.All, "x": view.Archive, "i": view.Inbox, "t": view.Today,
 	} {
 		press(a, "g", key)
 		if a.current.Spec.Kind != kind {

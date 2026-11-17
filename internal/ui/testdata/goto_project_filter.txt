@@ -1,0 +1,24 @@
+taskmoth ▸ Today                                       tues · 2026-11-10 · 15:26
+                                                                               │
+▶ [ ]  P1  Pay credit card balances                                     today  │
+           #oneofftasks  ~30m  s:2026-11-10                                    │
+          ┌─ Goto Project ───────────────────────────────────────────┐         │
+  [ ]  P2 │                                                         ││overdue  │
+          │ > r                                                     ││         │
+          │                                                         ││         │
+  [ ]  P4 │ ▶ #groceries                                            ││6-11-14  │
+          │   #work                                                 ││         │
+          │                                                         ││         │
+          │                                                         ││         │
+          │                                                         ││         │
+          │                                                         ││         │
+          │                                                         ││         │
+          │                                                         ││         │
+          │                                                         ││         │
+          │ enter select  esc clear  ctrl+n new  ctrl+x archive     ││         │
+          └──────────────────────────────────────────────────────────┘         │
+                                                                               │
+                                                                               │
+  Today   3/3 tasks · ~2.25h total · ~2.25h remaining                s:priority 
+ q add  space done  e edit/view  x archive  s sort  ? shortcuts  / search       
+ g i inbox  g t today  g u upcoming  g p projects  g o overdue  g a all         

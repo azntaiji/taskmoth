@@ -218,16 +218,13 @@ func TestSortCyclesAndParse(t *testing.T) {
 	if got := walk(DefaultCycle); !eq(got, []string{"priority", "due", "start", "duration", "name", "priority"}) {
 		t.Errorf("default cycle = %v", got)
 	}
-	if got := walk(CompletedCycle); !eq(got, []string{"completed", "priority", "due", "start", "duration", "name", "completed"}) {
-		t.Errorf("completed cycle = %v", got)
-	}
 	if got := walk(ArchiveCycle); got[0] != "archived" || got[1] != "priority" {
 		t.Errorf("archive cycle = %v", got)
 	}
 	if Next(DefaultCycle, SortArchived) != DefaultCycle[0] {
 		t.Error("a key not in the cycle should restart it")
 	}
-	for _, k := range []SortKey{SortName, SortStart, SortDue, SortPriority, SortDuration, SortCompleted, SortArchived} {
+	for _, k := range []SortKey{SortName, SortStart, SortDue, SortPriority, SortDuration, SortArchived} {
 		if got, ok := ParseSortKey(k.String()); !ok || got != k {
 			t.Errorf("ParseSortKey(%q) = %v, %v", k.String(), got, ok)
 		}
@@ -237,16 +234,12 @@ func TestSortCyclesAndParse(t *testing.T) {
 	}
 }
 
-func TestSortByCompletionAndArchive(t *testing.T) {
+func TestSortByArchive(t *testing.T) {
 	at := func(h int) time.Time { return time.Date(2026, 11, 10, h, 0, 0, 0, time.UTC) }
 	ts := []Task{
 		{ID: "1", Name: "old", CompletedAt: at(8), ArchivedAt: at(12)},
 		{ID: "2", Name: "new", CompletedAt: at(11), ArchivedAt: at(9)},
-		{ID: "3", Name: "open"}, // no completion: last
-	}
-	Sort(ts, SortCompleted)
-	if got := names(ts); !eq(got, []string{"new", "old", "open"}) {
-		t.Errorf("by completed = %v", got)
+		{ID: "3", Name: "open"}, // never archived: last
 	}
 	Sort(ts, SortArchived)
 	if got := names(ts); !eq(got, []string{"old", "new", "open"}) {
@@ -324,11 +317,65 @@ func TestListedKeepsTodaysCompletions(t *testing.T) {
 		{"open, no dates", Task{}, false},
 	}
 	for _, tt := range tests {
-		if got := Listed(tt.task, now, inToday); got != tt.want {
+		if got := Listed(tt.task, now, inToday, CompletedToday, true); got != tt.want {
 			t.Errorf("%s: Listed = %v, want %v", tt.name, got, tt.want)
 		}
 	}
-	if !Listed(Task{CompletedAt: earlyToday}, now, InInbox) {
+	if !Listed(Task{CompletedAt: earlyToday}, now, InInbox, CompletedToday, false) {
 		t.Error("an Inbox task completed today should stay listed in Inbox")
+	}
+}
+
+func TestListedCompletedModes(t *testing.T) {
+	now := time.Date(2026, 11, 10, 15, 0, 0, 0, time.UTC)
+	today := DateOf(now)
+	inbox := func(x Task) bool { return InInbox(x) }
+	overdue := func(x Task) bool { return InOverdue(x, today) }
+	doneToday := Task{Due: today.AddDays(-3), CompletedAt: now.Add(-time.Hour)}
+	doneLastWeek := Task{Due: today.AddDays(-3), CompletedAt: now.AddDate(0, 0, -7)}
+	open := Task{Due: today.AddDays(-3)}
+
+	tests := []struct {
+		name  string
+		task  Task
+		in    func(Task) bool
+		dated bool
+		mode  CompletedMode
+		want  bool
+	}{
+		{"today: today's completion", doneToday, inbox, false, CompletedToday, true},
+		{"today: older completion", doneLastWeek, inbox, false, CompletedToday, false},
+		{"all: older completion", doneLastWeek, inbox, false, CompletedAll, true},
+		{"all: dated view keeps today's only", doneLastWeek, overdue, true, CompletedAll, false},
+		{"all: dated view, today's completion", doneToday, overdue, true, CompletedAll, true},
+		{"hidden: today's completion", doneToday, inbox, false, CompletedHidden, false},
+		{"hidden: open task", open, inbox, false, CompletedHidden, true},
+		{"all: archived", Task{CompletedAt: now, ArchivedAt: now}, inbox, false, CompletedAll, false},
+		{"all: belongs elsewhere when open", Task{ProjectID: "p", CompletedAt: now}, inbox, false, CompletedAll, false},
+	}
+	for _, tt := range tests {
+		if got := Listed(tt.task, now, tt.in, tt.mode, tt.dated); got != tt.want {
+			t.Errorf("%s: Listed = %v, want %v", tt.name, got, tt.want)
+		}
+	}
+}
+
+func TestCompletedModeCycleAndNames(t *testing.T) {
+	m := CompletedMode(0)
+	var seen []string
+	for range 4 {
+		seen = append(seen, m.String())
+		m = m.Next()
+	}
+	if !eq(seen, []string{"today", "all", "hidden", "today"}) {
+		t.Errorf("cycle = %v", seen)
+	}
+	for _, m := range []CompletedMode{CompletedToday, CompletedAll, CompletedHidden} {
+		if got, ok := ParseCompletedMode(m.String()); !ok || got != m {
+			t.Errorf("ParseCompletedMode(%q) = %v, %v", m.String(), got, ok)
+		}
+	}
+	if _, ok := ParseCompletedMode("bogus"); ok {
+		t.Error("ParseCompletedMode(bogus) should fail")
 	}
 }

@@ -2,6 +2,7 @@ package task
 
 import (
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 )
@@ -73,5 +74,32 @@ func TestSortSearch(t *testing.T) {
 	}
 	if want := []ID{"4", "2", "5", "1", "3"}; !reflect.DeepEqual(got, want) {
 		t.Errorf("order = %v, want %v", got, want)
+	}
+}
+
+func TestMatchProjects(t *testing.T) {
+	ps := []Project{{Name: "work"}, {Name: "photos"}, {Name: "homelab-tech"}, {Name: "hobbies-games"}, {Name: "groceries"}}
+	names := func(ps []Project) []string {
+		var out []string
+		for _, p := range ps {
+			out = append(out, p.Name)
+		}
+		return out
+	}
+	cases := []struct {
+		filter string
+		want   []string
+	}{
+		{"", []string{"work", "photos", "homelab-tech", "hobbies-games", "groceries"}},
+		{"ho", []string{"hobbies-games", "homelab-tech", "photos"}},
+		{"#HO", []string{"hobbies-games", "homelab-tech", "photos"}},
+		{" tech", []string{"homelab-tech"}},
+		{"-", []string{"hobbies-games", "homelab-tech"}},
+		{"zzz", nil},
+	}
+	for _, c := range cases {
+		if got := names(MatchProjects(ps, c.filter)); !slices.Equal(got, c.want) {
+			t.Errorf("MatchProjects(%q) = %v, want %v", c.filter, got, c.want)
+		}
 	}
 }

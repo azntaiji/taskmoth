@@ -2,10 +2,12 @@ package ui
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/azntaiji/taskmoth/internal/store"
@@ -121,7 +123,7 @@ func TestUpcomingGroupsByDay(t *testing.T) {
 	golden(t, "upcoming", a.View().Content)
 }
 
-func TestOverdueAllCompleted(t *testing.T) {
+func TestOverdueAndAll(t *testing.T) {
 	clk := &clock{}
 	s := designStore(t, clk)
 	a := newApp(t, s, clk, 80, 24)
@@ -137,23 +139,6 @@ func TestOverdueAllCompleted(t *testing.T) {
 	press(a, "g", "a")
 	if n := len(a.current.Rows()); n != 12 { // 4 open dated + 6 inbox + 2 completed today (G3.1)
 		t.Errorf("All lists %d tasks", n)
-	}
-
-	press(a, "g", "c")
-	rows = a.current.Rows()
-	if len(rows) != 2 || a.current.Sort != task.SortCompleted || !strings.HasSuffix(screen(a)[21], "s:completed ") {
-		t.Fatalf("Completed: %d rows, sort %v", len(rows), a.current.Sort)
-	}
-	if !strings.Contains(screen(a)[2], "2026-11-10") {
-		t.Errorf("completed badge should show the completion date: %q", screen(a)[2])
-	}
-	press(a, "space") // G4.2: reopens
-	if len(a.current.Rows()) != 1 {
-		t.Error("space in Completed should reopen the task")
-	}
-	press(a, "s")
-	if a.current.Sort != task.SortPriority {
-		t.Errorf("Completed cycle after completed = %v", a.current.Sort)
 	}
 }
 
@@ -236,7 +221,7 @@ func TestProjectArchiveFlow(t *testing.T) {
 	if all, _ := g.selectable(a); all[g.sel].Name != "oneofftasks" {
 		t.Errorf("Goto Project should start on the viewed project, got %q", all[g.sel].Name)
 	}
-	press(a, "x")
+	press(a, "ctrl+x")
 	c, ok := a.topDialog().(*confirmDialog)
 	if !ok || c.message != "Archive #oneofftasks and its 6 tasks?" {
 		t.Fatalf("confirm = %+v", a.topDialog())
@@ -265,7 +250,7 @@ func TestProjectArchiveFlow(t *testing.T) {
 	if all[nActive].Name != "oneofftasks" {
 		t.Fatalf("selected %q", all[nActive].Name)
 	}
-	press(a, "u")
+	press(a, "ctrl+u")
 	if !strings.Contains(screen(a)[21], "Unarchived #oneofftasks.") {
 		t.Errorf("notice = %q", screen(a)[21])
 	}
@@ -282,10 +267,10 @@ func TestProjectArchiveFlow(t *testing.T) {
 			g.sel = i
 		}
 	}
-	press(a, "x", "right", "enter") // archive
+	press(a, "ctrl+x", "right", "enter") // archive
 	all, nActive = a.topDialog().(*gotoDialog).selectable(a)
 	a.topDialog().(*gotoDialog).sel = nActive
-	press(a, "x")
+	press(a, "ctrl+x")
 	if c := a.topDialog().(*confirmDialog); c.message != "Delete #oneofftasks and its 6 archived tasks forever?" {
 		t.Errorf("delete message = %q", c.message)
 	}
@@ -325,9 +310,9 @@ func TestCreateProjectDialog(t *testing.T) {
 		t.Fatal(err)
 	}
 	a := newApp(t, s, clk, 80, 24)
-	press(a, "g", "p", "n")
+	press(a, "g", "p", "ctrl+n")
 	if _, ok := a.topDialog().(*createProjectDialog); !ok {
-		t.Fatal("n should open Create New Project")
+		t.Fatal("ctrl+n should open Create New Project")
 	}
 	golden(t, "create_project", a.View().Content)
 
@@ -395,7 +380,6 @@ func TestEmptyViews(t *testing.T) {
 		"u": "Nothing starting or due in the next 7 days.  q to add a task",
 		"o": "Nothing overdue.  q to add a task",
 		"a": "No open tasks.  q to add a task",
-		"c": "No completed tasks yet.",
 		"x": "The archive is empty.",
 	} {
 		press(a, "g", key)
@@ -408,5 +392,88 @@ func TestEmptyViews(t *testing.T) {
 	if !strings.Contains(strings.Join(screen(a), "\n"), "No projects yet.") {
 		t.Error("Goto Project should say there are no projects")
 	}
-	press(a, "x", "u", "enter", "j") // must not panic with nothing selected
+	press(a, "ctrl+x", "ctrl+u", "enter", "down", "j") // must not panic with nothing selected
+}
+
+// TestGotoProjectFilter covers typing in Goto Project (G11.1–G11.3).
+func TestGotoProjectFilter(t *testing.T) {
+	clk := &clock{}
+	s := projectStore(t, clk)
+	a := newApp(t, s, clk, 80, 24)
+	names := func() []string {
+		all, _ := a.topDialog().(*gotoDialog).selectable(a)
+		var out []string
+		for _, p := range all {
+			out = append(out, p.Name)
+		}
+		return out
+	}
+	typeKeys := func(text string) {
+		for _, r := range text {
+			press(a, string(r))
+		}
+	}
+
+	press(a, "g", "p")
+	typeKeys("o") // letters filter; none of them are actions any more
+	if got := names(); !slices.Equal(got, []string{"oneofftasks", "groceries", "work"}) {
+		t.Errorf("filter o = %v, want prefix matches first, then A–Z", got)
+	}
+	g := a.topDialog().(*gotoDialog)
+	if all, _ := g.selectable(a); all[g.sel].Name != "oneofftasks" {
+		t.Errorf("the best match should be selected, got %q", all[g.sel].Name)
+	}
+	press(a, "backspace")
+	typeKeys("r")
+	golden(t, "goto_project_filter", a.View().Content)
+	if got := names(); !slices.Equal(got, []string{"groceries", "work"}) {
+		t.Errorf("filter r = %v", got)
+	}
+	press(a, "down", "enter")
+	if a.current.Spec.Title != "#work" {
+		t.Fatalf("enter opened %q, want #work", a.current.Spec.Title)
+	}
+
+	// No match, then esc clears before it closes.
+	press(a, "g", "p")
+	typeKeys("zzx")
+	if _, ok := a.topDialog().(*gotoDialog); !ok {
+		t.Fatal("x should be typed, not archive")
+	}
+	if !strings.Contains(strings.Join(screen(a), "\n"), "No projects match.") {
+		t.Errorf("no-match message missing:\n%s", strings.Join(screen(a), "\n"))
+	}
+	press(a, "enter", "ctrl+x") // nothing selected: no-ops
+	press(a, "esc")
+	if _, ok := a.topDialog().(*gotoDialog); !ok || len(names()) != 3 {
+		t.Fatalf("esc should clear the filter and keep the dialog open, got %v", names())
+	}
+	press(a, "esc")
+	if a.topDialog() != nil {
+		t.Fatal("a second esc should close Goto Project")
+	}
+
+	// Archived matches stay under their heading, and ctrl+u unarchives.
+	press(a, "g", "p")
+	typeKeys("work")
+	press(a, "ctrl+x", "right", "enter")
+	all, nActive := a.topDialog().(*gotoDialog).selectable(a)
+	if nActive != 0 || len(all) != 1 || !all[0].Archived() {
+		t.Fatalf("after archiving, filter work = %v (%d active)", all, nActive)
+	}
+	if !strings.Contains(strings.Join(screen(a), "\n"), "Archived") {
+		t.Error("archived match should be under the Archived heading")
+	}
+	press(a, "ctrl+u")
+	if !strings.Contains(screen(a)[21], "Unarchived #work.") {
+		t.Errorf("notice = %q", screen(a)[21])
+	}
+
+	// Pasting filters too.
+	press(a, "esc", "esc", "g", "p")
+	_, cmd := a.Update(tea.PasteMsg{Content: "groc"})
+	run(a, cmd)
+	if got := names(); !slices.Equal(got, []string{"groceries"}) {
+		t.Errorf("paste filter = %v", got)
+	}
 }

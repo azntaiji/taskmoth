@@ -69,14 +69,27 @@ func (d *confirmDialog) view(_ *App, t theme.Theme) string {
 	return w.Frame(t, w.FrameOptions{Width: dialogWidth, Focused: true}, body)
 }
 
-// --- Goto Project (Figma 40:14667, decision G4.7) ---
+// --- Goto Project (Figma 40:14667, decisions G4.7, G11.1–G11.4) ---
 
 // gotoVisible is how many project lines the dialog shows (Figma: 8 rows).
 const gotoVisible = 8
 
+// gotoHelp is the design's help line, shown as the filter's placeholder.
+const gotoHelp = "Select a project to open its list:"
+
+// gotoDialog lists projects with a filter that takes every typed key
+// (G11.1); its actions are on ctrl keys so that letters can be typed.
 type gotoDialog struct {
-	sel int // index into active followed by archived
-	top int // first visible line
+	filter *w.Input
+	sel    int // index into active followed by archived
+	top    int // first visible line
+}
+
+func newGotoDialog() *gotoDialog {
+	in := &w.Input{Placeholder: gotoHelp}
+	in.SetSize(w.FrameBodyWidth(dialogWidth, true), 1)
+	in.Focus()
+	return &gotoDialog{filter: in}
 }
 
 func (a *App) splitProjects() (active, archived []task.Project) {
@@ -90,9 +103,12 @@ func (a *App) splitProjects() (active, archived []task.Project) {
 	return active, archived
 }
 
-// selectable returns active projects then archived ones.
+// selectable returns the active projects then the archived ones that match
+// the filter (G11.3).
 func (d *gotoDialog) selectable(a *App) (all []task.Project, nActive int) {
 	active, archived := a.splitProjects()
+	q := d.filter.Value()
+	active, archived = task.MatchProjects(active, q), task.MatchProjects(archived, q)
 	return append(active, archived...), len(active)
 }
 
@@ -131,6 +147,12 @@ func (d *gotoDialog) selectProject(a *App, id task.ID) {
 	d.clamp(a)
 }
 
+func (d *gotoDialog) paste(msg tea.PasteMsg) {
+	if d.filter.Update(msg) {
+		d.sel, d.top = 0, 0
+	}
+}
+
 func (d *gotoDialog) update(a *App, msg tea.KeyPressMsg) (bool, tea.Cmd) {
 	all, _ := d.selectable(a)
 	var sel *task.Project
@@ -139,19 +161,24 @@ func (d *gotoDialog) update(a *App, msg tea.KeyPressMsg) (bool, tea.Cmd) {
 	}
 	switch msg.String() {
 	case "esc":
+		if d.filter.Value() != "" {
+			d.filter.SetValue("")
+			d.sel, d.top = 0, 0
+			break
+		}
 		return true, nil
-	case "up", "k":
+	case "up":
 		d.sel--
-	case "down", "j":
+	case "down":
 		d.sel++
-	case "n":
+	case "ctrl+n":
 		a.push(newCreateProjectDialog())
 	case "enter":
 		if sel != nil && !sel.Archived() {
 			id := sel.ID
 			return true, func() tea.Msg { return openProjectMsg{id} }
 		}
-	case "x":
+	case "ctrl+x":
 		if sel == nil {
 			break
 		}
@@ -169,9 +196,13 @@ func (d *gotoDialog) update(a *App, msg tea.KeyPressMsg) (bool, tea.Cmd) {
 				action:  "delete", run: a.deleteProject(p),
 			})
 		}
-	case "u":
+	case "ctrl+u": // unarchive here, not the input's "clear line" (esc clears)
 		if sel != nil && sel.Archived() {
 			return false, a.unarchiveProject(*sel)
+		}
+	default:
+		if d.filter.Update(msg) {
+			d.sel, d.top = 0, 0 // the best match
 		}
 	}
 	d.clamp(a)
@@ -183,6 +214,7 @@ func (d *gotoDialog) view(a *App, t theme.Theme) string {
 	bw := w.FrameBodyWidth(dialogWidth, true)
 	base := t.Base()
 	all, nActive := d.selectable(a)
+	filtering := d.filter.Value() != ""
 
 	var lines []string
 	for i, p := range all {
@@ -200,11 +232,15 @@ func (d *gotoDialog) view(a *App, t theme.Theme) string {
 			lines = append(lines, w.Marker(t, false, t.C.Bg)+base.Render(w.Truncate(t, name, bw-2)))
 		}
 	}
-
-	body := []string{"", help(t, "Select a project to open its list:"), ""}
 	if len(all) == 0 {
-		body[1] = help(t, "No projects yet.")
+		msg := "No projects yet."
+		if filtering {
+			msg = "No projects match."
+		}
+		lines = []string{w.Blank(base, w.MarkerWidth) + help(t, msg)}
 	}
+
+	body := []string{"", d.filter.View(t, false), ""}
 	for i := 0; i < gotoVisible; i++ {
 		l := ""
 		if d.top+i < len(lines) {
@@ -213,15 +249,19 @@ func (d *gotoDialog) view(a *App, t theme.Theme) string {
 		body = append(body, l)
 	}
 
-	nav := w.Hint{Key: t.G.Up + " / " + t.G.Down, Label: "select"}
+	esc := w.Hint{Key: "esc", Label: "cancel"}
+	if filtering {
+		esc.Label = "clear"
+	}
+	newHint := w.Hint{Key: "ctrl+n", Label: "new"}
 	var hints []w.Hint
 	switch {
 	case len(all) == 0:
-		hints = []w.Hint{{Key: "n", Label: "new"}, {Key: "esc", Label: "cancel"}}
+		hints = []w.Hint{newHint, esc}
 	case all[d.sel].Archived():
-		hints = []w.Hint{nav, {Key: "u", Label: "unarchive"}, {Key: "x", Label: "delete forever"}, {Key: "esc", Label: "cancel"}}
+		hints = []w.Hint{{Key: "ctrl+u", Label: "unarchive"}, {Key: "ctrl+x", Label: "delete forever"}, esc}
 	default:
-		hints = []w.Hint{nav, {Key: "enter", Label: "select"}, {Key: "esc", Label: "cancel"}, {Key: "n", Label: "new"}, {Key: "x", Label: "archive"}}
+		hints = []w.Hint{{Key: "enter", Label: "select"}, esc, newHint, {Key: "ctrl+x", Label: "archive"}}
 	}
 	body = append(body, "", w.HintRow(t, bw, hints))
 
