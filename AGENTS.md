@@ -43,7 +43,7 @@ internal/ui/theme/   Figma colour tokens; palettes: default (ANSI indices, G9.2)
 internal/ui/widget/  widgets built from the Figma Components page (header, status bar,
                      key hints, badges, checkbox, marker, scrollbar, frame, input, overlay)
 internal/ui/gallery/ dev gallery (taskmoth --gallery) for comparing widgets with Figma
-docs/images/         README logo (SVG), screenshots and GIFs; docs/tapes/ holds the VHS scripts
+docs/images/         README screenshots and GIFs, logo icon (SVG); the README logo itself is ASCII; docs/tapes/ holds the VHS scripts
 ```
 
 ## UI conventions

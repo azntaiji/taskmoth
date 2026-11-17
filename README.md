@@ -1,9 +1,10 @@
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo-dark.svg">
-    <img src="docs/images/logo-light.svg" alt="taskmoth" width="420">
-  </picture>
-</p>
+```text
+ .--.  \ /  .--.     _                   _                          _     _
+(    `-(@)-'    )   | |_    __ _   ___  | | __  _ __ ___     ___   | |_  | |__
+ `-.  /|=|\  .-'    | __|  / _` | / __| | |/ / | '_ ` _ \   / _ \  | __| | '_ \
+   (_/ |=| \_)      | |_  | (_| | \__ \ |   <  | | | | | | | (_) | | |_  | | | |
+        V            \__|  \__,_| |___/ |_|\_\ |_| |_| |_|  \___/   \__| |_| |_|
+```
 
 <p align="center"><strong>A keyboard-driven task manager for the terminal.</strong><br>
 Natural-language quick add, smart lists, instant search — all in a fast, local TUI built with <a href="https://github.com/charmbracelet/bubbletea">Bubble Tea</a>.</p>
@@ -217,7 +218,7 @@ make release-check  # validate the GoReleaser config and build every release arc
 make demo           # re-record the README's GIFs and screenshots with VHS (brew install vhs)
 ```
 
-The README's images live in `docs/images`. The GIFs and screenshots are recorded from scripts in `docs/tapes` with [VHS](https://github.com/charmbracelet/vhs), using the sample data in a scratch directory, so `make demo` reproduces them after a UI change. The logo is SVG.
+The README's images live in `docs/images`. The GIFs and screenshots are recorded from scripts in `docs/tapes` with [VHS](https://github.com/charmbracelet/vhs), using the sample data in a scratch directory, so `make demo` reproduces them after a UI change. The logo at the top is plain ASCII text in the README itself.
 
 Developer flags, hidden from `--help`: `--seed` loads the sample data from the designs into an empty data directory, `--list VIEW` prints a view (`today`, `upcoming`, `overdue`, `inbox`, `someday`, `all`, `completed`, `archive`, `project:<name>`), and `--gallery` shows the widget gallery. Always point them at a scratch directory, e.g. `taskmoth --data /tmp/tm --seed`.
 
@@ -239,7 +240,7 @@ internal/ui/view/    list views (Today, Inbox, …)
 internal/ui/theme/   colour tokens (palette → semantic), the default (ANSI) and Dracula palettes, dimmed theme, glyphs
 internal/ui/widget/  widgets built from the Figma Components page
 internal/ui/gallery/ developer gallery
-docs/images/         logo, README screenshots and GIFs
+docs/images/         README screenshots and GIFs, logo icon (SVG)
 docs/tapes/          VHS scripts that record the screenshots and GIFs
 ```
 
