@@ -1,0 +1,24 @@
+taskmoth ▸ Task                                        tues · 2026-11-10 · 15:26
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ File insurance reimbursements                                               ││
+│                                                                             ││
+│ #oneofftasks                                                                ││
+│                                                                             ││
+│  P1    today   s:2026-11-10  ~2h                                            ││
+│                                                                             ││
+│ Description                                                                 ││
+│ No description. Press d to add one.                                         ││
+│                                                                             ││
+│                                                                             ││
+│                                                                             ││
+│                                                                             ││
+│                                                                             ││
+│                                                                             ││
+│                                                                             ││
+│                                                                             ││
+│                                                                             ││
+│                                                                             ││
+│                                                                             ││
+└──────────────────────────────────────────────────────────────────────────────┘
+ ↑ / ↓ scroll  space done  esc return to list  x archive  n name                
+ p priority  v project  r start date  t due date  y duration  d description     

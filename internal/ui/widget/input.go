@@ -316,14 +316,18 @@ func (in *Input) View(t theme.Theme, field bool) string {
 	if field {
 		bg = t.C.BgInput
 	}
-	return in.ViewOn(t, bg, t.C.TextMuted)
+	fg := t.C.Text
+	if field {
+		fg = t.C.TextOnInput // G9.8
+	}
+	return in.ViewOn(t, fg, bg, t.C.TextMuted)
 }
 
-// ViewOn renders the input on any background, with the placeholder in
-// placeholderFg (the Search bar, Figma 40:16937: statusbar/bg and
-// text/warning).
-func (in *Input) ViewOn(t theme.Theme, bg, placeholderFg color.Color) string {
-	fill := t.Style(t.C.Text, bg)
+// ViewOn renders the input in fg on any background, with the placeholder in
+// placeholderFg (the Search bar, Figma 40:16937: statusbar/bg, with the
+// placeholder at the dim opacity, G9.9).
+func (in *Input) ViewOn(t theme.Theme, fg, bg, placeholderFg color.Color) string {
+	fill := t.Style(fg, bg)
 	prompt := t.Style(t.C.TextAccent, bg).Render(">") + fill.Render(" ")
 	cursor := t.Style(t.C.Reverse.Fg, t.C.Reverse.Bg)
 	textStyle := fill

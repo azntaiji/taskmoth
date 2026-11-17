@@ -76,8 +76,9 @@ An empty Inbox, Someday list or project gets a moth and a note for the day. Clea
 
 - **Local and private**: one SQLite file in `~/.local/share/taskmoth`, no account, no network. Automatic backups before upgrades.
 - **Fast**: stays instant with thousands of tasks.
+- **Your terminal's colours**: the default theme draws with the 16 ANSI colours of your terminal's own scheme, light or dark, and its own background. Prefer the look in the screenshots everywhere? Switch to the built-in Dracula theme (see [Settings](#settings)).
 - **Works anywhere**: macOS and Linux, Intel and ARM, over SSH and inside tmux. True colour, 256-colour and 16-colour terminals, and an `--ascii` mode for minimal fonts.
-- **Designed first**: every screen was built from a Figma design, with colours from Dracula-based design tokens.
+- **Designed first**: every screen was built from a Figma design, with colours from design tokens mapped onto the ANSI palette.
 
 ### Planned
 
@@ -155,6 +156,23 @@ Quit with `ctrl+q` or `ctrl+c` (`q` is "add task"). Press `?` for every key.
 
 Dialogs use `←`/`→` to choose a button and `enter` to confirm. In edit dialogs, an empty value clears the field (`no date` also clears a date), and Edit Project's "Inbox" entry removes the project. In Edit Description, `shift+enter` (where the terminal supports it), `alt+enter` or `ctrl+j` adds a line break.
 
+### Settings
+
+Settings live in `~/.config/taskmoth/config.toml` (or `$XDG_CONFIG_HOME/taskmoth/config.toml`). The file is optional:
+
+```toml
+# Colour theme:
+#   "default"  your terminal's own ANSI colours and background
+#   "dracula"  taskmoth's Dracula palette in 24-bit colour, the same in every terminal
+theme = "dracula"
+```
+
+`TASKMOTH_THEME=dracula` overrides the file for one run. An unknown theme or setting stops taskmoth with a message naming the file, so a typo never goes unnoticed.
+
+In the default theme, dimmed text (completed tasks, the view behind a dialog) uses your terminal's "faint" style. The Dracula theme blends real colours instead.
+
+The default theme is tested with Dracula, Nord, Solarized Light and Dark, Catppuccin Latte and the stock iTerm2 and Ghostty schemes. One known limitation: iTerm2's built-in **Solarized Dark** preset sets "bright black" to the background colour, which hides the P3 badge. Ghostty's copy of the scheme (and most ports) doesn't, or use `theme = "dracula"`.
+
 ### Your data
 
 Everything lives in one SQLite file, `taskmoth.db`, in `~/.local/share/taskmoth` (or `$XDG_DATA_HOME/taskmoth`, or the `--data` directory). To back it up, copy that directory while taskmoth isn't running.
@@ -210,6 +228,7 @@ The code is laid out as:
 ```
 cmd/taskmoth/        entry point and flags
 internal/paths/      XDG data and config directories
+internal/config/     config.toml (theme)
 internal/lock/       single-instance lock on the data directory
 internal/task/       domain model, view filters, sorting (pure; no UI or storage)
 internal/nlp/        quick-add parser, date phrases, durations (pure)
@@ -217,7 +236,7 @@ internal/store/      SQLite store, migrations, integrity check and backups, in-m
 internal/seed/       sample data from the designs
 internal/ui/         app model, key map, dialogs, Add Task, task view, Search, shortcuts
 internal/ui/view/    list views (Today, Inbox, …)
-internal/ui/theme/   colour tokens (palette → semantic), dimmed theme, glyphs
+internal/ui/theme/   colour tokens (palette → semantic), the default (ANSI) and Dracula palettes, dimmed theme, glyphs
 internal/ui/widget/  widgets built from the Figma Components page
 internal/ui/gallery/ developer gallery
 docs/images/         logo, README screenshots and GIFs

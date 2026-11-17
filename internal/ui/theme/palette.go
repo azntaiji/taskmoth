@@ -4,6 +4,7 @@ import (
 	"image/color"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 // Slot is one of the 16 ANSI palette entries (Figma collection
@@ -32,33 +33,80 @@ const (
 	numSlots
 )
 
-// Palette is one mode of the Figma "Primitives / Palette" collection: an RGB
-// value for each ANSI slot, plus which slots base/fg and base/bg point to.
+// Palette is one mode of the Figma "Primitives / Palette" collection: a
+// colour for each ANSI slot, plus which slots base/fg and base/bg point to.
 //
-// taskmoth draws palette colours as 24-bit RGB rather than as ANSI indices
-// (decision G1.7), so the app looks the same in every terminal and the
-// dimmed theme can blend real colours.
+// There are two kinds (decision G9.2). An RGB palette such as Dracula sends
+// 24-bit colours (G1.7), so it looks the same in every terminal and the
+// dimmed theme can blend real colours. The ANSI palette ("default") sends
+// each slot as its ANSI index, so the terminal's own colour scheme decides
+// the colours; its base/fg and base/bg are the terminal's defaults (G9.4).
 type Palette struct {
 	Name   string
 	Slots  [numSlots]color.Color
 	BaseFg Slot // base/fg
 	BaseBg Slot // base/bg
+	// ANSI marks a palette of ANSI indices, whose RGB values are unknown:
+	// base/fg and base/bg are the terminal defaults, and dimming uses the
+	// faint attribute instead of blending (G9.3).
+	ANSI bool
 }
 
 // Color returns the colour of a slot.
 func (p Palette) Color(s Slot) color.Color { return p.Slots[s] }
 
-// Fg returns base/fg.
-func (p Palette) Fg() color.Color { return p.Slots[p.BaseFg] }
+// Fg returns base/fg: the terminal's default foreground in an ANSI palette.
+func (p Palette) Fg() color.Color {
+	if p.ANSI {
+		return termFg
+	}
+	return p.Slots[p.BaseFg]
+}
 
-// Bg returns base/bg.
-func (p Palette) Bg() color.Color { return p.Slots[p.BaseBg] }
+// Bg returns base/bg: the terminal's default background in an ANSI palette.
+func (p Palette) Bg() color.Color {
+	if p.ANSI {
+		return termBg
+	}
+	return p.Slots[p.BaseBg]
+}
 
-// Dracula is the "Dracula" mode of the Figma palette and taskmoth's default.
+// Theme names for the config file and TASKMOTH_THEME (decision G9.5).
+const (
+	DefaultName = "default"
+	DraculaName = "dracula"
+)
+
+// Names lists the palettes taskmoth knows, default first.
+func Names() []string { return []string{DefaultName, DraculaName} }
+
+// ByName returns the named palette.
+func ByName(name string) (Palette, bool) {
+	switch name {
+	case DefaultName:
+		return ANSI(), true
+	case DraculaName:
+		return Dracula(), true
+	}
+	return Palette{}, false
+}
+
+// ANSI is the default palette: each slot is the terminal's own colour for
+// that index (the "Index n · SGR …" in each Figma palette variable), sent as
+// SGR 30–37/90–97 and 40–47/100–107 (decision G9.2).
+func ANSI() Palette {
+	p := Palette{Name: DefaultName, BaseFg: BrightWhite, BaseBg: Black, ANSI: true}
+	for i := range p.Slots {
+		p.Slots[i] = ansi.BasicColor(i) //nolint:gosec // i < 16
+	}
+	return p
+}
+
+// Dracula is the "Dracula" mode of the Figma palette, drawn as 24-bit RGB.
 func Dracula() Palette {
 	c := lipgloss.Color
 	return Palette{
-		Name: "Dracula",
+		Name: DraculaName,
 		Slots: [numSlots]color.Color{
 			Black:         c("#22212c"),
 			Red:           c("#ff9580"),

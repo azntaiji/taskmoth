@@ -524,7 +524,9 @@ func (l *List) renderRow(t theme.Theme, width int, tk task.Task, selected bool, 
 	if selected {
 		bg, nameFg = t.C.SelectionBg, t.C.SelectionFg
 	}
-	if tk.Done() {
+	if tk.Done() && (!selected || !t.ANSI()) {
+		// The default theme keeps selection/fg on the selection bar, where
+		// faint text isn't readable (G9.6).
 		nameFg = t.C.TextMuted
 	}
 	fill := t.Style(t.C.Text, bg)
@@ -541,7 +543,11 @@ func (l *List) renderRow(t theme.Theme, width int, tk task.Task, selected bool, 
 	name := t.Style(nameFg, bg).Render(w.Truncate(t, tk.Name, nameRoom))
 	line1 := w.Spread(lead+fill.Render(" ")+name, right, width, fill)
 
-	meta := t.Style(t.FadeOn(t.C.Text, bg), bg) // metadata at 50% opacity on the row
+	metaFg := t.C.Text
+	if selected {
+		metaFg = t.C.SelectionFg // the same in Dracula; readable in the default theme (G9.6)
+	}
+	meta := t.Style(t.FadeOn(metaFg, bg), bg) // metadata at 50% opacity on the row
 	line2 := w.Blank(fill, w.Width(lead))
 	if l.Spec.Kind == Project {
 		projects = nil // G7.5: a project's own list doesn't repeat its name

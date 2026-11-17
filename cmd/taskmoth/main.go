@@ -14,6 +14,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/azntaiji/taskmoth/internal/config"
 	"github.com/azntaiji/taskmoth/internal/lock"
 	"github.com/azntaiji/taskmoth/internal/paths"
 	"github.com/azntaiji/taskmoth/internal/store"
@@ -46,6 +47,8 @@ func usage(fs *flag.FlagSet) func() {
 			name, help := flag.UnquoteUsage(f)
 			_, _ = fmt.Fprintf(w, "  --%-12s %s\n", strings.TrimSpace(f.Name+" "+name), help)
 		})
+		_, _ = fmt.Fprint(w, "\nSettings live in $XDG_CONFIG_HOME/taskmoth/config.toml (default ~/.config/taskmoth):\n")
+		_, _ = fmt.Fprintf(w, "  theme = %q   colour theme: %s (also TASKMOTH_THEME)\n", theme.DefaultName, strings.Join(theme.Names(), " or "))
 		_, _ = fmt.Fprint(w, "\nIn the app, press ? for every key. Quit with ctrl+q.\n")
 	}
 }
@@ -95,7 +98,15 @@ func run(o options) error {
 		return fmt.Errorf("resolving directories: %w", err)
 	}
 
-	t := theme.New(o.ascii)
+	cfg, err := config.Load(filepath.Join(dirs.ConfigDir, config.FileName))
+	if err != nil {
+		return err
+	}
+	p, err := pickTheme(cfg, os.Getenv("TASKMOTH_THEME"), filepath.Join(dirs.ConfigDir, config.FileName))
+	if err != nil {
+		return err
+	}
+	t := theme.New(p, o.ascii)
 	if o.gallery {
 		_, err = tea.NewProgram(gallery.New(t)).Run()
 		return err
@@ -113,6 +124,24 @@ func run(o options) error {
 		return runDev(o, dirs.DataDir)
 	}
 	return runApp(t, dirs.DataDir)
+}
+
+// pickTheme chooses the palette (decision G9.1): TASKMOTH_THEME, then the
+// config file's theme, then the default. An unknown name is an error naming
+// where it came from.
+func pickTheme(cfg config.Config, env, cfgPath string) (theme.Palette, error) {
+	name, from := theme.DefaultName, ""
+	switch {
+	case strings.TrimSpace(env) != "":
+		name, from = strings.TrimSpace(env), "TASKMOTH_THEME"
+	case cfg.Theme != "":
+		name, from = cfg.Theme, cfgPath
+	}
+	p, ok := theme.ByName(strings.ToLower(name))
+	if !ok {
+		return theme.Palette{}, fmt.Errorf("%s: unknown theme %q; use %s", from, name, strings.Join(theme.Names(), " or "))
+	}
+	return p, nil
 }
 
 // lockData takes the data directory's single-instance lock (G8.4).

@@ -23,7 +23,7 @@ func TestDuration(t *testing.T) {
 }
 
 func TestClock(t *testing.T) {
-	uni, ascii := theme.New(false), theme.New(true)
+	uni, ascii := theme.New(theme.Dracula(), false), theme.New(theme.Dracula(), true)
 	tue := time.Date(2026, 11, 10, 15, 26, 0, 0, time.UTC)
 	if got := Clock(uni, tue); got != "tues · 2026-11-10 · 15:26" {
 		t.Errorf("Clock = %q", got)

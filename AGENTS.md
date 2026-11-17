@@ -19,8 +19,10 @@ taskmoth is a keyboard-driven TUI task manager in Go (Bubble Tea v2, Lip Gloss v
 ## Layout
 
 ```
-cmd/taskmoth/        entry point and flags (--data, --ascii, --version; hidden: --gallery, --seed, --list)
+cmd/taskmoth/        entry point, flags (--data, --ascii, --version; hidden: --gallery, --seed, --list),
+                     theme choice (TASKMOTH_THEME > config.toml > default)
 internal/paths/      XDG data/config directory resolution
+internal/config/     config.toml settings (theme; G9.1)
 internal/lock/       single-instance lock on the data directory (flock; G8.4)
 internal/task/       domain model, validation, view filters, sort orders (pure)
 internal/nlp/        quick-add parser (PLAN.md Appendix A), ParseDate, ParseDuration (pure)
@@ -36,7 +38,8 @@ internal/ui/         root Bubble Tea model (app.go): store, clock, key chords, v
                      come from it); search.go: the Search view; shortcuts.go: Keyboard Shortcuts
 internal/ui/view/    list views: one configurable List + a Spec per view (Today, Inbox, Upcoming,
                      Overdue, All, Completed, Archive, projects); duration/clock/day formatting
-internal/ui/theme/   Figma colour tokens, the dimmed theme, glyph sets (Unicode/ASCII)
+internal/ui/theme/   Figma colour tokens; palettes: default (ANSI indices, G9.2) and dracula (RGB);
+                     the dimmed theme (blend or faint), glyph sets (Unicode/ASCII)
 internal/ui/widget/  widgets built from the Figma Components page (header, status bar,
                      key hints, badges, checkbox, marker, scrollbar, frame, input, overlay)
 internal/ui/gallery/ dev gallery (taskmoth --gallery) for comparing widgets with Figma
@@ -47,7 +50,8 @@ docs/images/         README logo (SVG), screenshots and GIFs; docs/tapes/ holds 
 
 - **Colours follow Figma's two layers.** `theme.Palette` (`palette.go`) holds the 16 ANSI slots, and `theme.Semantic` (`colors.go`) maps each semantic token to a slot, mirroring Figma's aliases. Widgets and views use only `theme.Colors` fields, each named after its Figma semantic variable. They never use palette slots or hex values directly. To add a token, read its alias in Figma, add the field and its slot in `Semantic`, then add its expected value in `TestSemanticMatchesFigma`. `get_variable_defs` shows only resolved hex; read the alias with a read-only `use_figma` script.
 - **Glyphs come from `theme.Glyphs`.** Never write `▶`, `│`, `…` and so on directly, so that `--ascii` / `TASKMOTH_ASCII=1` keeps working.
-- **Dimming:** draw the view behind a dialog with `theme.Dimmed()`, then composite it with `widget.Overlay`. A component's own "dim" variant (completed tasks, the header clock) uses `theme.Fade` / `FadeOn`.
+- **Dimming:** draw the view behind a dialog with `theme.Dimmed()`, then composite it with `widget.Overlay`. A component's own "dim" variant (completed tasks, the header clock) uses `theme.Fade` / `FadeOn` for text and `theme.FadePair` for filled elements (badges, buttons).
+- **Two kinds of palette.** The default palette sends ANSI indices and leaves base/fg and base/bg as the terminal's defaults (G9.2, G9.4); Dracula sends RGB. Always build styles with `theme.Style` / `Base`, which handle the terminal-default colours, reverse and faint; never call `lipgloss.NewStyle().Foreground(...)` with a token directly, and never compare or blend token colours yourself. Golden tests run on Dracula; `TestDefaultThemeUsesANSIColours` covers the default theme.
 - **Widths are terminal cells, not bytes or runes.** One Figma cell is 12×24 px. Truncate plain text with `widget.Truncate` before styling it, and lay out with `Fit` / `Spread`.
 - **Every rendered line must be exactly the target width.** The golden tests assert this.
 - **Keys live in the key map** (`internal/ui/keymap.go`). Add a list key there, with its hint and shortcuts-dialog labels, rather than in a `switch`; hint rows are built with `hintFor`/`listHints`, and `TestHintsMatchKeyMap` checks them.

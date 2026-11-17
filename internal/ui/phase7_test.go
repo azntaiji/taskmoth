@@ -167,7 +167,7 @@ func TestShortcutsDialog(t *testing.T) {
 // TestHintsMatchKeyMap: every hint row comes from the key map, every key in
 // the map does something, and no key is bound twice.
 func TestHintsMatchKeyMap(t *testing.T) {
-	for _, th := range []theme.Theme{theme.New(false), theme.New(true)} {
+	for _, th := range []theme.Theme{theme.New(theme.Dracula(), false), theme.New(theme.Dracula(), true)} {
 		for k := view.Today; k <= view.Search; k++ {
 			for _, row := range listHints(th.G, k) { // panics on an unbound key
 				if len(row) == 0 {

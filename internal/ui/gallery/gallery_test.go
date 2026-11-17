@@ -27,7 +27,7 @@ func sized(t theme.Theme, w, h int) *Model {
 // the 80×24 renders to testdata for side-by-side review against Figma.
 func TestPagesFillTheScreen(t *testing.T) {
 	for _, ascii := range []bool{false, true} {
-		th := theme.New(ascii)
+		th := theme.New(theme.Dracula(), ascii)
 		for _, size := range [][2]int{{80, 24}, {120, 40}} {
 			m := sized(th, size[0], size[1])
 			for i := range m.pages {
@@ -68,7 +68,7 @@ func TestPagesFillTheScreen(t *testing.T) {
 }
 
 func TestPageNavigationAndInput(t *testing.T) {
-	m := sized(theme.New(false), 80, 24)
+	m := sized(theme.New(theme.Dracula(), false), 80, 24)
 	m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	if m.page != 1 {
 		t.Fatalf("tab: page %d", m.page)
@@ -102,7 +102,7 @@ func TestPageNavigationAndInput(t *testing.T) {
 }
 
 func TestTooSmall(t *testing.T) {
-	m := sized(theme.New(false), 60, 20)
+	m := sized(theme.New(theme.Dracula(), false), 60, 20)
 	if !strings.Contains(ansi.Strip(m.View().Content), "Terminal too small") {
 		t.Error("expected too-small message")
 	}

@@ -102,7 +102,8 @@ cmd/taskmoth/        main: flags, config/data paths, tea.Program
 internal/task/       domain types, validation, sort comparators, view filters (pure)
 internal/nlp/        natural-language parser for quick-add, dates, durations (pure)
 internal/store/      persistence behind a Store interface
-internal/ui/theme/   design tokens -> lipgloss styles, dimmed variant
+internal/ui/theme/   design tokens -> lipgloss styles, dimmed variant, palettes (default ANSI, dracula)
+internal/config/     config.toml (G9.1)
 internal/ui/widget/  header, statusbar, keyhints, badge, scrollbar, dialog frame, text input
 internal/ui/view/    list view (configurable), single task view, search
 internal/ui/dialog/  one file per dialog
@@ -312,7 +313,7 @@ Not to be built now, but keep the door open:
 - **Search in Goto Project** — type to filter the project list in the Goto Project dialog (`g p`) once there are many projects.
 - **Export** — CSV and JSON export of tasks and projects.
 - **Grouping options in lists** — group any list by due date, start date, priority, project, or duration buckets (Upcoming's day grouping, G4.1, is the first case).
-- **Theme support** — user-selectable colour themes (e.g. files in `~/.config/taskmoth/themes/` mapping Figma token names to colours), possibly including a light theme and a theme that follows the terminal's own ANSI palette. Implication now: every colour goes through `theme.Colors` (named after its Figma variable); views never construct colours. A terminal-palette theme can't use pre-blended dimming (G1.4) because its RGB values are unknown, so it would need the faint attribute instead.
+- **More themes** (G9.1–G9.5 added `default` and `dracula`) — an in-app theme picker that writes `config.toml`, user-defined themes (e.g. files in `~/.config/taskmoth/themes/` mapping Figma token names to colours), possibly including a light theme. Implication now: every colour goes through `theme.Colors` (named after its Figma variable); views never construct colours.
 
 ---
 
@@ -423,6 +424,15 @@ Record every gate outcome here before proceeding.
 | G8.6 | **`--version` prints version, commit and date:** `taskmoth 1.0.0 (a1b2c3d, 2026-11-20)`. Releases get them from GoReleaser (ldflags); `go install …@v1.0.0` builds print `taskmoth 1.0.0` (module zips carry no commit); local builds print the version Go derives from git tags, e.g. `taskmoth 0.7.1+dirty (bdc7bc7, 2026-11-13)`, or `taskmoth dev` without git. | 2026-11-13 | Local-build wording adjusted during Phase 8: Go 1.24+ stamps local builds from VCS tags, which says more than "dev". |
 | G8.7 | **Release notes are generated from commit subjects** since the previous tag, by GoReleaser, on the GitHub Release page. No CHANGELOG.md. | 2026-11-13 | |
 | G8.1a | **Versioning**, pulled forward from G8.1: SemVer 2.0.0 released as git tags `vX.Y.Z`. The README shows a version badge from the latest tag. Until 1.0.0 the minor version tracks completed phases (first release `v0.5.0` = Phases 0–5) and fixes bump the patch. 1.0.0 is the Phase 8 release. | 2026-11-12 | The distribution parts of G8.1 are still open. |
+| G9.1 | **Theme setting: a config file plus an env var.** `$XDG_CONFIG_HOME/taskmoth/config.toml` (default `~/.config/taskmoth/config.toml`, G0.3) holds `theme = "default"` or `theme = "dracula"`; `TASKMOTH_THEME` overrides it, like `TASKMOTH_ASCII`. A missing file or key means `default`. No in-app picker for now. | 2026-11-16 | Recommended over an in-app picker, which would need a Figma screen and a settings write path, for a setting that rarely changes. A picker that writes the same file is on the roadmap (§7). An unknown theme name or a malformed file stops taskmoth with a message naming the file and the valid names, rather than silently falling back. |
+| G9.2 | **The `default` theme uses the terminal's own ANSI colours.** Each Figma palette slot is sent as its ANSI index (the "Index n · SGR …" in each variable's description), and the semantic tokens keep their Figma aliases, so the terminal's colour scheme decides the actual colours. `dracula` is the previous 24-bit RGB theme (G1.7), now optional. | 2026-11-16 | Supersedes G1.7 for the default theme only. Figma's palette keeps its single Dracula mode as the reference rendering. |
+| G9.3 | **In the `default` theme, dimming uses the faint attribute (SGR 2)**, since the terminal's RGB values are unknown and can't be blended (G1.4). This covers the view behind a dialog, completed tasks, the header clock and the other "dim" variants. Faint dims text; coloured backgrounds (selection, badges) keep their colour, and faded badges and buttons use the neutral (bright-black) badge colours. `dracula` keeps pre-blended dimming. | 2026-11-16 | Supported by iTerm2, Ghostty, Kitty, Alacritty, GNOME Terminal and tmux. |
+| G9.4 | **In the `default` theme, base/fg and base/bg are the terminal's default foreground and background** (SGR 39/49), not slots 15 and 0, so taskmoth matches the terminal, including light schemes and transparent backgrounds. Where base/bg is drawn as a text colour (reverse cursor and buttons, badge text), the reverse attribute is used. | 2026-11-16 | |
+| G9.5 | **Theme names: `default` and `dracula`.** | 2026-11-16 | |
+| G9.6 | **Default theme: text on the selection bar is drawn in the terminal's background colour** (via reverse), on slot 4, for both lines of a selected task row, including a completed one, and for selected entries in dialogs. selection/fg stays slot 15 in `dracula`. | 2026-11-17 | From the operator's scheme audit (iTerm2 and Ghostty: Dracula, stock, Nord, Solarized Light/Dark, Catppuccin Latte): slot 15 is a grey in some light schemes (Latte `#6c6f85`), and faint text on slot 4 was unreadable in Solarized and Latte. Schemes design their colours to be readable against their background, so the background colour is readable on them too. |
+| G9.7 | **Default theme: text/muted and key/label are the terminal's default text with the faint attribute**, not slot 8. Badge fills on slot 8 (P3, faded badges) are unchanged. | 2026-11-17 | Slot 8 is darker than the text in Solarized Light and equals the background in iTerm2's Solarized Dark preset, which hid completed names and hint labels. That preset still hides slot-8 fills (P3 badge); README notes it as a known limitation (Ghostty's copy of the scheme fixes slot 8). |
+| G9.8 | **Default theme: text in input fields and the search bar is statusbar/fg (slot 7)** on their slot-8 fill, the status bar's own pair. `dracula` keeps text/default. | 2026-11-17 | Default text on slot 8 was low-contrast on light schemes. |
+| G9.9 | **The search placeholder ("search for a task...") is statusbar/fg at the dim opacity**, like the hint labels beside it, instead of text/warning, in both themes. Figma's Search bar (40:17331) is updated to match. | 2026-11-17 | Operator request: yellow read as a warning. |
 
 ---
 
