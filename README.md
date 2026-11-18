@@ -48,6 +48,12 @@ Press `q` and type. Dates, projects, priorities and durations are picked out as 
   <img src="docs/images/upcoming.png" alt="The Upcoming view, grouped by day" width="49%">
 </p>
 
+### Plan your week without over-assigning
+
+`g c` opens the **Calendar**: every day from today on, one line each, with a bar and a count of the tasks due that day (`1 done / 5 due`) and the time still estimated. Weeks have headers, the status bar totals the selected week, and overdue tasks sit in a row at the top. `enter` opens a day's tasks, and `q` adds a task due on the selected day. While you set a due date, in Edit Due date or with `@` in quick add, the dialog shows how many tasks that day already has.
+
+<p align="center"><img src="docs/images/calendar.png" alt="The Calendar: days with bars of tasks due, grouped by week" width="760"></p>
+
 ### Find anything as you type
 
 `/` searches names, descriptions and project names, with words in any order. Narrow it down with `#project`, `#inbox` or `!p1`–`!p4`. Press `enter` to work on the results with the usual keys.
@@ -157,6 +163,7 @@ Quit with `ctrl+q` or `ctrl+c` (`q` is "add task"). Press `?` for every key.
 | `x` | archive the selected task (in the Archive: delete forever) |
 | `u` | unarchive (in the Archive) |
 | `g t` `g i` `g u` `g o` `g s` `g a` `g x` | Today, Inbox, Upcoming, Overdue, Someday, All, Archive |
+| `g c` | Calendar: `↑`/`↓` or `j`/`k` pick a day, `[`/`]` a week, `t` today, `enter` open the day (`esc` returns), `q` add a task due that day |
 | `g p` | Goto Project: type to filter, `enter` open, `ctrl+n` new project, `ctrl+x` archive, `ctrl+u` unarchive, `esc` clear the filter / close |
 | `/` | search (see below) |
 | `?` | keyboard shortcuts (`esc` or `?` closes) |
@@ -209,7 +216,7 @@ While typing, `↑`/`↓` move the selection. `enter` moves to the results, wher
 
 ### Quick add
 
-Type the task name. Anything taskmoth recognises is highlighted and shown in the preview line.
+Type the task name. Anything taskmoth recognises is highlighted and shown in the preview line. With a due date, the line under it shows how many tasks are already due that day (`thurs · 2026-11-12 · 1 done / 4 due`).
 
 | Write | Sets |
 |---|---|
@@ -250,13 +257,13 @@ cmd/taskmoth/        entry point and flags
 internal/paths/      XDG data and config directories
 internal/config/     config.toml (theme)
 internal/lock/       single-instance lock on the data directory
-internal/task/       domain model, view filters, sorting, grouping (pure; no UI or storage)
+internal/task/       domain model, view filters, sorting, grouping, per-day counts (pure; no UI or storage)
 internal/nlp/        quick-add parser, date phrases, durations (pure)
 internal/store/      SQLite store, migrations, integrity check and backups, in-memory store for tests
 internal/export/     CSV and JSON export
 internal/seed/       sample data from the designs
 internal/ui/         app model, key map, dialogs, Add Task, task view, Search, shortcuts
-internal/ui/view/    list views (Today, Inbox, …)
+internal/ui/view/    list views (Today, Inbox, …) and the Calendar
 internal/ui/theme/   colour tokens (palette → semantic), the default (ANSI) and Dracula palettes, dimmed theme, glyphs
 internal/ui/widget/  widgets built from the Figma Components page
 internal/ui/gallery/ developer gallery

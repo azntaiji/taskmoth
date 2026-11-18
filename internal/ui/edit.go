@@ -11,6 +11,7 @@ import (
 	"github.com/azntaiji/taskmoth/internal/nlp"
 	"github.com/azntaiji/taskmoth/internal/task"
 	"github.com/azntaiji/taskmoth/internal/ui/theme"
+	"github.com/azntaiji/taskmoth/internal/ui/view"
 	w "github.com/azntaiji/taskmoth/internal/ui/widget"
 )
 
@@ -74,7 +75,10 @@ type textEditDialog struct {
 	field bool // shaded multi-row field (name, description) vs a plain line
 	t     task.Task
 	parse func(a *App, value string) (task.Task, string)
-	err   string
+	// note, if set, is a muted line under the input, worked out from the
+	// value as it's typed (Edit Due date's day count, G14.11).
+	note func(a *App, t theme.Theme, value string) string
+	err  string
 }
 
 func (d *textEditDialog) update(a *App, msg tea.KeyPressMsg) (bool, tea.Cmd) {
@@ -115,6 +119,9 @@ func (d *textEditDialog) view(a *App, t theme.Theme) string {
 	}
 	body = append(body, "")
 	body = append(body, w.Lines(d.input.View(t, d.field))...)
+	if d.note != nil {
+		body = append(body, help(t, w.Truncate(t, d.note(a, t, d.input.Value()), bw)))
+	}
 	hints := []w.Hint{{Key: "enter", Label: "save"}, {Key: "esc", Label: "cancel"}}
 	if d.input.Multiline {
 		nl := w.Hint{Key: "ctrl+j", Label: "newline"}
@@ -176,7 +183,7 @@ func newDateDialog(_ *App, t task.Task, due bool) dialog {
 	if due {
 		title, cur = "Edit Due date", t.Due
 	}
-	return newTextEdit(title, dateHelp, cur.String(), 1, false, false, t,
+	d := newTextEdit(title, dateHelp, cur.String(), 1, false, false, t,
 		func(a *App, v string) (task.Task, string) {
 			var d task.Date
 			if strings.TrimSpace(v) != "" {
@@ -192,6 +199,29 @@ func newDateDialog(_ *App, t task.Task, due bool) dialog {
 			}
 			return t, ""
 		})
+	if due {
+		d.note = func(a *App, th theme.Theme, v string) string { return a.dueLoadLine(th, v, t.ID) }
+	}
+	return d
+}
+
+// dueLoadLine is "mon · 2026-11-23 · 1 done / 5 due" for the date typed in
+// v, leaving out the task skip (G14.11, G14.12); "" when v is empty or
+// doesn't parse.
+func (a *App) dueLoadLine(t theme.Theme, v string, skip task.ID) string {
+	if strings.TrimSpace(v) == "" {
+		return ""
+	}
+	d, ok := nlp.ParseDate(v, task.DateOf(a.clock))
+	if !ok || d.IsZero() {
+		return ""
+	}
+	return a.dayLoadLine(t, d, skip)
+}
+
+// dayLoadLine is dueLoadLine for a parsed date.
+func (a *App) dayLoadLine(t theme.Theme, d task.Date, skip task.ID) string {
+	return view.DayLoadLine(t, d, task.LoadOn(a.tasks, d, skip))
 }
 
 // durationText formats minutes for editing: 30m, 2h, 1h30m.

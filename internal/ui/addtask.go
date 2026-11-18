@@ -229,6 +229,12 @@ type (
 	addFailedMsg struct{ text string }
 )
 
+// setDue starts the input as " @YYYY-MM-DD" with the cursor before it, so
+// the name typed lands in front of the due date (G14.7).
+func (d *addTaskDialog) setDue(day task.Date) {
+	d.input.SetValueCursor(" @"+day.String(), 0)
+}
+
 func (d *addTaskDialog) view(a *App, t theme.Theme) string {
 	bw := w.FrameBodyWidth(dialogWidth, false)
 	r := d.parse(a)
@@ -278,16 +284,24 @@ func (d *addTaskDialog) view(a *App, t theme.Theme) string {
 		}
 		status = []string{t.Style(t.C.TextWarning, t.C.Bg).Render(w.Truncate(t, q, bw))}
 	case len(sugg) > 0:
-		status = previewLines()
+		status = append(previewLines(), d.dueLine(a, t, r, bw)...)
 		hints = []w.Hint{{Key: "tab", Label: "complete"}, {Key: t.G.Up + " / " + t.G.Down, Label: "select"},
 			{Key: "enter", Label: "add task"}, {Key: "esc", Label: "hide list"}}
 	default:
-		status = previewLines()
+		status = append(previewLines(), d.dueLine(a, t, r, bw)...)
 		hints = []w.Hint{{Key: "enter", Label: "add task"}, {Key: "esc", Label: "cancel"}, {Key: "ctrl+t", Label: "keep as text"}}
 	}
 	body = append(body, status...)
 	body = append(body, "", w.HintRow(t, bw, hints))
 	return w.Frame(t, w.FrameOptions{Width: dialogWidth, Title: "Add Task", Focused: true}, body)
+}
+
+// dueLine is the day count for the @due typed, if any (G14.11).
+func (d *addTaskDialog) dueLine(a *App, t theme.Theme, r nlp.Result, bw int) []string {
+	if r.Due.IsZero() {
+		return nil
+	}
+	return []string{help(t, w.Truncate(t, a.dayLoadLine(t, r.Due, ""), bw))}
 }
 
 // preview is "→ #oneofftasks · due 2026-11-12 · s:2026-11-11 · ~30m · P2"

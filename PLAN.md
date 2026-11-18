@@ -105,7 +105,7 @@ internal/store/      persistence behind a Store interface
 internal/ui/theme/   design tokens -> lipgloss styles, dimmed variant, palettes (default ANSI, dracula)
 internal/config/     config.toml (G9.1)
 internal/ui/widget/  header, statusbar, keyhints, badge, scrollbar, dialog frame, text input
-internal/ui/view/    list view (configurable), single task view, search
+internal/ui/view/    list view (configurable), single task view, search, calendar (G14)
 internal/ui/dialog/  one file per dialog
 internal/ui/app.go   root model: active view, dialog stack, key chords, clock tick
 ```
@@ -447,6 +447,19 @@ Record every gate outcome here before proceeding.
 | G13.3 | **Due date groups are buckets:** `overdue`, `today`, `tomorrow`, `this week` (2–7 days ahead), `later`, then `no due date`. | 2026-11-17 | |
 | G13.4 | **Headers look like Upcoming's day headers** (bold text/accent, a blank line above), and empty groups are left out. Groups by project put `Inbox` first, then `#projects` A–Z; by priority P1–P4. Within a group the list's sort applies, open tasks before completed (G3.3c). The status bar shows the grouping before the sort, `o:project  s:priority`, only while grouped. | 2026-11-17 | Not in the Figma designs; code only, like G11.4 and G12.4. |
 | G9.9 | **The search placeholder ("search for a task...") is statusbar/fg at the dim opacity**, like the hint labels beside it, instead of text/warning, in both themes. Figma's Search bar (40:17331) is updated to match. | 2026-11-17 | Operator request: yellow read as a warning. |
+| G14.1 | **A Calendar view, opened with `g c`**, headed `taskmoth ▸ Calendar`. It lists days, one per line, with a bar of how many tasks are due on each, for planning a week without over-assigning. It has no daily limit or threshold colours; the app stays general. | 2026-11-17 | Option D of the visual options (`etc/calendar.md`). `g c` has been free since G12.5. |
+| G14.2 | **A day counts the tasks due that day** (`due = day`), open and completed, except archived ones. Start dates don't count, and the `c` mode (G12.1) doesn't change the counts. A row reads `tues · 2026-11-24   ▆▆▆▆▆   1 done / 5 due   ~4h`, where `~4h` is the estimate still remaining (open tasks only). | 2026-11-17 | |
+| G14.3 | **The bar has one cell per task**: open tasks in key colour, completed ones dimmed after them. A day with more tasks than the bar has room for ends in `+`. The glyph is `▆` (`#` with `--ascii`), short of the full cell so that bars on neighbouring days stay apart. No threshold colours. | 2026-11-17 | |
+| G14.4 | **The view opens on today and lists every day**, empty ones with a muted `·`, scrolling forward without end; past days aren't listed. Each week starts with a header like Upcoming's, `week of 2026-11-23` (bold text/accent, a blank line above). The status bar sums the selected day's week: `week of 2026-11-23 · 1 done / 15 due · ~9h remaining`. | 2026-11-17 | |
+| G14.5 | **Weeks start on Monday**, fixed. | 2026-11-17 | A `config.toml` setting could come later. |
+| G14.6 | **Overdue tasks get one row at the top**, `overdue` with their count and bar in error colour, shown only when there are any. `enter` on it opens the Overdue view. | 2026-11-17 | |
+| G14.7 | **Calendar keys:** `j/k`, `↑/↓`, `pgup/pgdn` and `home` move as in the lists; `[` / `]` jump a week; `t` returns to today (no task is selected, so it isn't "edit due date" here); `q` opens Add Task with `@<selected day>` filled in. The day list's `q` does the same. | 2026-11-17 | |
+| G14.8 | **`enter` on a day opens a day list**: every task due that day, open and completed (matching the counts), in the standard two-line rows with every list key, headed `taskmoth ▸ tue · 2026-11-24`. `esc` returns to the Calendar on the same day, and also from the Overdue view when it was opened from the Calendar. The day list remembers its sort (`sort.day`) and grouping (`group.day`: none → project → priority → duration). | 2026-11-17 | |
+| G14.9 | **The Calendar's bottom hints show its own keys**; `g c calendar` is listed only in the shortcuts dialog (G4.5). In the Calendar, the shortcuts dialog shows a Calendar column in place of Within Lists and Selected Tasks. | 2026-11-17 | |
+| G14.10 | **Code only**, with no Figma frame, like G11.4, G12.4 and G13.4. It reuses the list's header, rows, day headers, status bar and hints. | 2026-11-17 | |
+| G14.11 | **The Edit Due date dialog and Add Task show how many tasks are due on the date being entered**, updated as you type, whenever a due date parses (Add Task: an `@due`). Edit Start date doesn't. | 2026-11-17 | Operator request alongside the Calendar, to see a day's load while assigning. |
+| G14.12 | **The line reads `mon · 2026-11-23 · 1 done / 5 due`**, muted, under the input (Edit Due) or the preview (Add Task). "Due" counts every task due that day, done or not (as in G14.2), not counting the task being edited. The line is blank while the input is empty or doesn't parse. | 2026-11-17 | |
+| G14.13 | **Released as a minor version, v1.3.0**, once committed and pushed. | 2026-11-17 | The operator approved "v0.14.0"; the latest tag is already v1.2.0, so the minor bump is v1.3.0. |
 
 ---
 

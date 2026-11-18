@@ -26,6 +26,10 @@ Type "gu"
 Sleep 800ms
 Screenshot docs/images/upcoming.png
 Sleep 300ms
+Type "gc"
+Sleep 800ms
+Screenshot docs/images/calendar.png
+Sleep 300ms
 Type "?"
 Sleep 800ms
 Screenshot docs/images/shortcuts.png

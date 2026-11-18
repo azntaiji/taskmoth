@@ -25,14 +25,17 @@ const (
 	Someday
 	Project
 	Search
+	CalendarView // the Calendar (G14.1); drawn by Calendar, not a List
+	DayList      // a Calendar day's tasks (G14.8)
 )
 
 // Spec configures a list view. Every list view is the same List with a
 // different Spec (PLAN.md §4).
 type Spec struct {
 	Kind    Kind
-	Project task.ID // Project views only
-	Title   string  // header section and status badge
+	Project task.ID   // Project views only
+	Date    task.Date // Day lists only (G14.8)
+	Title   string    // header section and status badge
 	// Key names the view in stored settings: "sort." + Key.
 	Key string
 	// ShowSort shows the sort at the right of the status bar.
@@ -132,6 +135,19 @@ func SpecFor(k Kind) Spec {
 			Cycle: task.DefaultCycle, Groups: task.TodayGroups, Summary: openSummary,
 			Empty: "Nothing due or started today.", EmptyHint: true, DoneNote: TodayDoneNote,
 		}
+	}
+}
+
+// DaySpec returns the Spec of a Calendar day's list (G14.8): every task due
+// on d that isn't archived, open or completed, the tasks the Calendar
+// counts. `c` doesn't affect it. Every list of a day shares one Key, so
+// they share a sort and grouping.
+func DaySpec(t theme.Theme, d task.Date) Spec {
+	return Spec{
+		Kind: DayList, Date: d, Title: Day(t, d), Key: "day", ShowSort: true,
+		Select: func(tk task.Task, _ time.Time) bool { return task.DueOn(tk, d) },
+		Cycle:  task.DefaultCycle, Groups: task.TodayGroups, Summary: openSummary,
+		Empty: "Nothing due on this day.", EmptyHint: true,
 	}
 }
 

@@ -42,7 +42,15 @@ type App struct {
 	lists       map[view.Kind]*view.List
 	projectView map[task.ID]*view.List
 	current     *view.List
-	completed   task.CompletedMode // which completed tasks every list shows (G12.1)
+	// calendar is the Calendar view (G14.1). It isn't a List; calList is a
+	// placeholder List that a.current points to while it shows, so that
+	// switching views works as for the lists.
+	calendar *view.Calendar
+	calList  *view.List
+	// fromCalendar is the list `enter` opened from the Calendar (a day or
+	// Overdue); esc there returns to the Calendar (G14.8).
+	fromCalendar *view.List
+	completed    task.CompletedMode // which completed tasks every list shows (G12.1)
 
 	dialogs             []dialog
 	selectAfterLoad     task.ID   // project to select in Goto Project once reloaded
@@ -62,6 +70,9 @@ func NewApp(t theme.Theme, s store.Store, now func() time.Time) *App {
 	for _, k := range fixedViews {
 		a.lists[k] = view.NewList(view.SpecFor(k))
 	}
+	a.lists[view.DayList] = view.NewList(view.DaySpec(t, task.Date{})) // set to a day when opened
+	a.calendar = view.NewCalendar()
+	a.calList = &view.List{Spec: view.Spec{Kind: view.CalendarView, Title: "Calendar", Key: "calendar"}}
 	a.current = a.lists[view.Today] // the default view (brief)
 	return a
 }
@@ -211,6 +222,31 @@ func (a *App) refresh() {
 		a.prepare(l)
 		l.SetTasks(a.tasks, a.clock)
 	}
+	a.calendar.SetTasks(a.tasks, a.clock)
+}
+
+// inCalendar reports whether the Calendar is showing.
+func (a *App) inCalendar() bool { return a.current == a.calList }
+
+// openCalendar shows the Calendar on today (g c, G14.4).
+func (a *App) openCalendar() {
+	a.current, a.fromCalendar = a.calList, nil
+	a.calendar.Today()
+}
+
+// openDay opens the selected Calendar row: the day's list, or the Overdue
+// view from the overdue row (G14.6, G14.8).
+func (a *App) openDay() {
+	day, overdue := a.calendar.Selected()
+	l := a.lists[view.Overdue]
+	if !overdue {
+		l = a.lists[view.DayList]
+		l.Spec = view.DaySpec(a.theme, day)
+		a.prepare(l)
+		l.SetTasks(a.tasks, a.clock)
+		l.Top()
+	}
+	a.current, a.fromCalendar = l, l
 }
 
 // completedSetting stores the Completed mode (G12.2).
@@ -265,6 +301,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		for _, l := range a.allLists() {
 			l.SetHeight(a.bodyHeight())
 		}
+		a.calendar.SetHeight(a.bodyHeight())
 	case loadedMsg:
 		a.applyLoad(msg)
 	case reloadMsg:
@@ -449,7 +486,9 @@ func (a *App) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 	}
 	if a.pendingG {
 		a.pendingG = false
-		if key == "g" {
+		if key == "g" && a.inCalendar() {
+			a.calendar.Top()
+		} else if key == "g" {
 			a.current.Top()
 		} else if b, ok := lookup(key, gotoGroup); ok {
 			return b.act(a, a.current, key)
@@ -462,6 +501,16 @@ func (a *App) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 	}
 	if key == "g" {
 		a.pendingG = true
+		return nil
+	}
+	if a.inCalendar() {
+		if b, ok := lookup(key, calendarGroup, generalGroup); ok && b.act != nil {
+			return b.act(a, a.current, key)
+		}
+		return nil
+	}
+	if key == "esc" && a.current == a.fromCalendar {
+		a.current = a.calList // G14.8: back to the Calendar, on the same day
 		return nil
 	}
 	if b, ok := lookup(key, listGroup, taskGroup, generalGroup); ok && b.act != nil {
@@ -561,16 +610,26 @@ func (a *App) renderView(t theme.Theme) string {
 	}
 	l := a.current
 	lines := []string{widget.Header(t, a.width, l.Spec.Title, view.Clock(t, a.clock))}
+	pending := ""
+	if a.pendingG {
+		pending = "g" + t.G.Ellipsis
+	}
+	if a.inCalendar() {
+		if a.loaded {
+			lines = append(lines, a.calendar.Body(t, a.width)...)
+		} else {
+			lines = append(lines, make([]string, a.bodyHeight())...)
+		}
+		lines = append(lines, a.calendar.StatusBar(t, a.width, pending, a.message))
+		lines = append(lines, widget.KeyHints(t, a.width, calendarHints(t.G)...)...)
+		return widget.Screen(t, a.width, a.height, lines)
+	}
 	if a.loaded {
 		lines = append(lines, l.Body(t, a.width, a.projects, a.clock)...)
 	} else {
 		for range a.bodyHeight() {
 			lines = append(lines, "")
 		}
-	}
-	pending := ""
-	if a.pendingG {
-		pending = "g" + t.G.Ellipsis
 	}
 	if a.searching() && a.message == "" {
 		lines = append(lines, a.searchBar(t)) // G7: the input replaces the status bar

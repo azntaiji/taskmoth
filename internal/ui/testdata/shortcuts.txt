@@ -10,9 +10,9 @@ taskmoth ▸ Today                                       tues · 2026-11-10 · 1
   │ g p projects  home / end first/last  p edit priority                     │ │
   │ g o overdue   q add task             v edit project                      │ │
   │ g a all       s cycle sorting        r edit start date                   │ │
-  │ g s someday   o cycle grouping       t edit due date                     │ │
-  │ g x archive   c cycle completed      y edit duration                     │ │
-  │               / search for task      n edit name                         │ │
+  │ g c calendar  o cycle grouping       t edit due date                     │ │
+  │ g s someday   c cycle completed      y edit duration                     │ │
+  │ g x archive   / search for task      n edit name                         │ │
   │               u unarchive            d edit description                  │ │
   │                                                                          │ │
   │ esc close                                                                │ │

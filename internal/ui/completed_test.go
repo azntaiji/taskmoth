@@ -137,14 +137,3 @@ func TestCompletedModes(t *testing.T) {
 		t.Error("the Archive shouldn't follow the Completed mode")
 	}
 }
-
-// TestNoCompletedView checks the Completed view is gone (G12.5): `g c` does
-// nothing.
-func TestNoCompletedView(t *testing.T) {
-	clk := &clock{}
-	a := newApp(t, designStore(t, clk), clk, 80, 24)
-	press(a, "g", "c")
-	if a.current.Spec.Kind != view.Today {
-		t.Errorf("g c switched to %q", a.current.Spec.Title)
-	}
-}

@@ -36,7 +36,7 @@ func shortcutColumn(t theme.Theme, g keyGroup) []string {
 
 // shortcutRows lays the columns out side by side, starting a new row of
 // columns when the next one wouldn't fit in maxWidth.
-func shortcutRows(t theme.Theme, maxWidth int) []string {
+func shortcutRows(t theme.Theme, maxWidth int, groups []keyGroup) []string {
 	base := t.Base()
 	var out, row []string
 	rowWidth := 0
@@ -47,7 +47,7 @@ func shortcutRows(t theme.Theme, maxWidth int) []string {
 		out = append(out, row...)
 		row, rowWidth = nil, 0
 	}
-	for _, g := range keyGroups {
+	for _, g := range groups {
 		col := shortcutColumn(t, g)
 		cw := 0
 		for _, l := range col {
@@ -78,7 +78,11 @@ func shortcutRows(t theme.Theme, maxWidth int) []string {
 }
 
 func (d *shortcutsDialog) view(a *App, t theme.Theme) string {
-	rows := shortcutRows(t, a.width-4)
+	groups := keyGroups
+	if a.inCalendar() {
+		groups = calendarKeyGroups // G14.9
+	}
+	rows := shortcutRows(t, a.width-4, groups)
 	bw := 0
 	for _, r := range rows {
 		bw = max(bw, w.Width(r))

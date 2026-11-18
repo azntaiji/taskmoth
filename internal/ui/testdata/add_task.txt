@@ -1,13 +1,12 @@
 taskmoth ▸ Today                                       tues · 2026-11-10 · 15:26
                                                                                │
 ▶ [ ]  P1  Pay credit card balances                                     today  │
-           #oneofftasks  ~30m  s:2026-11-10                                    │
           ┌─ Add Task ───────────────────────────────────────────────┐         │
-  [ ]  P2 │                                                          │overdue  │
-          │ Add a new task using natural language. Options: # to     │         │
+          │                                                          │         │
+  [ ]  P2 │ Add a new task using natural language. Options: # to     │overdue  │
           │ assign to a project, s: to set start date, @ to set due  │         │
-  [ ]  P4 │ date, ~ to set duration, ! to set priority. Tasks        │6-11-14  │
-          │ without options are sent to the Inbox.                   │         │
+          │ date, ~ to set duration, ! to set priority. Tasks        │         │
+  [ ]  P4 │ without options are sent to the Inbox.                   │6-11-14  │
           │                                                          │         │
           │ > Change the laundry #oneofftasks @in 2 days ~30m !p2    │         │
           │   s:tomorrow                                             │         │
@@ -15,6 +14,7 @@ taskmoth ▸ Today                                       tues · 2026-11-10 · 1
           │                                                          │         │
           │ → #oneofftasks · due 2026-11-12 · s:2026-11-11 · ~30m ·  │         │
           │ P2                                                       │         │
+          │ thurs · 2026-11-12 · 0 done / 1 due                      │         │
           │                                                          │         │
           │ enter add task  esc cancel  ctrl+t keep as text          │         │
           └──────────────────────────────────────────────────────────┘         │

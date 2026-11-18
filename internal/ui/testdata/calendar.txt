@@ -1,0 +1,24 @@
+taskmoth ▸ Calendar                                    tues · 2026-11-10 · 15:26
+                                                                               │
+  overdue              ▆                      1 due              ~15m          █
+                                                                               █
+  week of 2026-11-09                                                           █
+▶ tues · 2026-11-10    ▆▆▆▆                   1 done / 4 due     ~3.5h         █
+  wed · 2026-11-11     ·                                                       █
+  thurs · 2026-11-12   ▆▆▆▆                   1 done / 4 due     ~3h           █
+  fri · 2026-11-13     ·                                                       █
+  sat · 2026-11-14     ·                                                       █
+  sun · 2026-11-15     ·                                                       │
+                                                                               │
+  week of 2026-11-16                                                           │
+  mon · 2026-11-16     ▆                      0 done / 1 due     ~15m          │
+  tues · 2026-11-17    ·                                                       │
+  wed · 2026-11-18     ·                                                       │
+  thurs · 2026-11-19   ·                                                       │
+  fri · 2026-11-20     ·                                                       │
+  sat · 2026-11-21     ·                                                       │
+  sun · 2026-11-22     ·                                                       │
+                                                                               │
+  Calendar   week of 2026-11-09 · 3 done / 10 due · ~6.75h remaining            
+ q add  enter open day  [ / ] week  t today  ? shortcuts  / search              
+ g i inbox  g t today  g u upcoming  g p projects  g o overdue  g a all         

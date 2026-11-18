@@ -40,7 +40,7 @@ type keyGroup struct {
 // gotoView is a `g` chord binding that switches to a fixed view.
 func gotoView(k string, v view.Kind, label string) binding {
 	return binding{keys: []string{k}, show: func(theme.Glyphs) string { return "g " + k }, short: label, long: label,
-		act: func(a *App, _ *view.List, _ string) tea.Cmd { a.current = a.lists[v]; return nil }}
+		act: func(a *App, _ *view.List, _ string) tea.Cmd { a.current, a.fromCalendar = a.lists[v], nil; return nil }}
 }
 
 // onSelected runs f on the selected task, if any.
@@ -78,6 +78,8 @@ var (
 				return nil
 			}},
 		gotoView("o", view.Overdue, "overdue"), gotoView("a", view.All, "all"),
+		{keys: []string{"c"}, show: func(theme.Glyphs) string { return "g c" }, short: "calendar", long: "calendar",
+			act: func(a *App, _ *view.List, _ string) tea.Cmd { a.openCalendar(); return nil }},
 		gotoView("s", view.Someday, "someday"),
 		gotoView("x", view.Archive, "archive"),
 	}}
@@ -90,7 +92,11 @@ var (
 		{keys: []string{"home", "end", "G", "shift+g"}, show: func(theme.Glyphs) string { return "home / end" },
 			short: "top/bottom", long: "first/last", act: move},
 		{keys: []string{"q"}, short: "add", long: "add task", act: func(a *App, l *view.List, _ string) tea.Cmd {
-			a.push(newAddTaskDialog(l.Spec.Project)) // G5.4: a project list defaults to its project
+			d := newAddTaskDialog(l.Spec.Project) // G5.4: a project list defaults to its project
+			if l.Spec.Kind == view.DayList {
+				d.setDue(l.Spec.Date) // G14.7
+			}
+			a.push(d)
 			return nil
 		}},
 		{keys: []string{"s"}, short: "sort", long: "cycle sorting", act: func(a *App, l *view.List, _ string) tea.Cmd {
@@ -150,8 +156,63 @@ var (
 		{keys: []string{"ctrl+q", "ctrl+c"}, short: "quit", long: "quit"},
 	}}
 
+	// calendarGroup is the Calendar's keys (G14.7, G14.8). Its bindings
+	// ignore the List they're given and act on a.calendar.
+	calendarGroup = keyGroup{"Calendar", []binding{
+		{keys: []string{"up", "down"}, show: func(g theme.Glyphs) string { return g.Up + " / " + g.Down },
+			short: "select", long: "select day", act: calendarMove},
+		{keys: []string{"j", "k"}, show: func(theme.Glyphs) string { return "j / k" }, short: "select", long: "select day", act: calendarMove},
+		{keys: []string{"pgup", "pgdown"}, show: func(theme.Glyphs) string { return "pgup / pgdn" }, short: "scroll", long: "scroll", act: calendarMove},
+		{keys: []string{"[", "]"}, show: func(theme.Glyphs) string { return "[ / ]" }, short: "week", long: "previous/next week", act: calendarMove},
+		{keys: []string{"home"}, short: "top", long: "first day", act: calendarMove},
+		{keys: []string{"t"}, short: "today", long: "today", act: calendarMove},
+		{keys: []string{"enter"}, short: "open day", long: "open day", act: func(a *App, _ *view.List, _ string) tea.Cmd {
+			a.openDay()
+			return nil
+		}},
+		{keys: []string{"q"}, short: "add", long: "add task due that day", act: func(a *App, _ *view.List, _ string) tea.Cmd {
+			d := newAddTaskDialog("")
+			if day, overdue := a.calendar.Selected(); !overdue {
+				d.setDue(day)
+			}
+			a.push(d)
+			return nil
+		}},
+		{keys: []string{"/"}, short: "search", long: "search for task", act: func(a *App, _ *view.List, _ string) tea.Cmd {
+			a.openSearch()
+			return nil
+		}},
+	}}
+
 	keyGroups = []keyGroup{gotoGroup, listGroup, taskGroup, generalGroup}
+	// calendarKeyGroups are the shortcuts dialog's columns in the Calendar
+	// (G14.9).
+	calendarKeyGroups = []keyGroup{gotoGroup, calendarGroup, generalGroup}
 )
+
+// calendarMove handles the Calendar's movement keys (G14.7).
+func calendarMove(a *App, _ *view.List, key string) tea.Cmd {
+	c := a.calendar
+	switch key {
+	case "up", "k":
+		c.Move(-1)
+	case "down", "j":
+		c.Move(1)
+	case "pgup":
+		c.Page(-1)
+	case "pgdown":
+		c.Page(1)
+	case "[":
+		c.Week(-1)
+	case "]":
+		c.Week(1)
+	case "home":
+		c.Top()
+	case "t":
+		c.Today()
+	}
+	return nil
+}
 
 func init() {
 	for _, f := range editFields {
@@ -224,7 +285,27 @@ func listHints(g theme.Glyphs, k view.Kind) [][]w.Hint {
 		row1 = []w.Hint{hintFor(g, "u"), hintFor(g, "x", "delete forever"), hintFor(g, "s"), hintFor(g, "?"), hintFor(g, "/")}
 	case view.Search:
 		row1 = slices.DeleteFunc(row1, func(h w.Hint) bool { return h.Key == "s" })
+	case view.DayList: // G14.8: due date in place of search, and the way back
+		row1 = []w.Hint{hintFor(g, "q"), hintFor(g, "space"), hintFor(g, "e"), hintFor(g, "t", "due date"),
+			hintFor(g, "x"), hintFor(g, "s"), hintFor(g, "esc")}
 	}
+	row2 := []w.Hint{gotoHint(g, "i"), gotoHint(g, "t"), gotoHint(g, "u"), gotoHint(g, "p"), gotoHint(g, "o"), gotoHint(g, "a")}
+	return [][]w.Hint{row1, row2}
+}
+
+// calendarHint is the hint for a Calendar key.
+func calendarHint(g theme.Glyphs, key string) w.Hint {
+	b, ok := lookup(key, calendarGroup, generalGroup)
+	if !ok {
+		panic("no calendar binding for hint " + key) // caught by TestHintsMatchKeyMap
+	}
+	return b.hint(g)
+}
+
+// calendarHints are the Calendar's two hint rows (G14.9).
+func calendarHints(g theme.Glyphs) [][]w.Hint {
+	row1 := []w.Hint{calendarHint(g, "q"), calendarHint(g, "enter"), calendarHint(g, "["), calendarHint(g, "t"),
+		calendarHint(g, "?"), calendarHint(g, "/")}
 	row2 := []w.Hint{gotoHint(g, "i"), gotoHint(g, "t"), gotoHint(g, "u"), gotoHint(g, "p"), gotoHint(g, "o"), gotoHint(g, "a")}
 	return [][]w.Hint{row1, row2}
 }

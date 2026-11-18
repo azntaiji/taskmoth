@@ -25,7 +25,8 @@ cmd/taskmoth/        entry point, flags (--data, --ascii, --version, --export/--
 internal/paths/      XDG data/config directory resolution
 internal/config/     config.toml settings (theme; G9.1)
 internal/lock/       single-instance lock on the data directory (flock; G8.4)
-internal/task/       domain model, validation, view filters, sort orders, groupings (pure)
+internal/task/       domain model, validation, view filters, sort orders, groupings,
+                     per-day due counts for the Calendar (G14.2) (pure)
 internal/nlp/        quick-add parser (PLAN.md Appendix A), ParseDate, ParseDuration (pure)
 internal/store/      Store interface; SQLite implementation + embedded migrations, integrity
                      check (G8.5) and pre-migration backups (G8.2);
@@ -37,10 +38,12 @@ internal/ui/         root Bubble Tea model (app.go): store, clock, key chords, v
                      addtask.go: Add Task (quick add, autocomplete, did-you-mean);
                      taskview.go: Single Task view; edit.go: the field edit dialogs;
                      keymap.go: the key map (dispatch, hint rows and the shortcuts dialog all
-                     come from it); search.go: the Search view; shortcuts.go: Keyboard Shortcuts
+                     come from it, including the Calendar's); search.go: the Search view;
+                     shortcuts.go: Keyboard Shortcuts
 internal/ui/view/    list views: one configurable List + a Spec per view (Today, Inbox, Upcoming,
-                     Overdue, All, Someday, Archive, projects), each showing completed tasks per
-                     the global Completed mode (G12.1); duration/clock/day formatting
+                     Overdue, All, Someday, Archive, projects, a Calendar day), each showing
+                     completed tasks per the global Completed mode (G12.1); calendar.go: the
+                     Calendar (G14); duration/clock/day formatting
 internal/ui/theme/   Figma colour tokens; palettes: default (ANSI indices, G9.2) and dracula (RGB);
                      the dimmed theme (blend or faint), glyph sets (Unicode/ASCII)
 internal/ui/widget/  widgets built from the Figma Components page (header, status bar,

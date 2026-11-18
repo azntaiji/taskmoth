@@ -1,0 +1,24 @@
+taskmoth ▸ thurs · 2026-11-12                          tues · 2026-11-10 · 15:26
+                                                                               │
+▶ [ ]  P2  Book flights                                                        │
+           ~1h                                                                 │
+                                                                               │
+  [ ]  P2  Call the bank                                                       │
+           ~30m                                                                │
+                                                                               │
+  [ ]  P2  Renew passport                                                      │
+           ~1.5h                                                               │
+                                                                               │
+  [x]  P4  Water plants                                                        │
+           ~5m                                                                 │
+                                                                               │
+                                                                               │
+                                                                               │
+                                                                               │
+                                                                               │
+                                                                               │
+                                                                               │
+                                                                               │
+  thurs · 2026-11-12   3/4 tasks · ~3.08h total · ~3h remaining      s:priority 
+ q add  space done  e edit/view  t due date  x archive  s sort  esc back        
+ g i inbox  g t today  g u upcoming  g p projects  g o overdue  g a all         
