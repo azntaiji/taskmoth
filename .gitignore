@@ -5,6 +5,5 @@
 /.playwright-mcp/
 /dist/
 /.vhs-tmp/
-TODO.md
 theme-test.md
-SCRATCH.md
+etc/
