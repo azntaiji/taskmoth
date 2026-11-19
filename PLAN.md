@@ -307,7 +307,7 @@ Not to be built now, but keep the door open:
 
 - **Task time tracking** — start/stop timers per task, actual vs estimated duration. Implication now: keep duration stored as minutes and keep `completed_at`. Storage plan (G2.4): a separate `time_entries(id, task_id → tasks.id, started_at, ended_at)` table added by a new migration, many entries per task, not a column on `tasks`.
 - **Task and project analytics** — completion rates, time per project, trends. Implication now: keep timestamps on tasks and prefer a queryable store.
-- **Recurring tasks** — e.g. `every monday`, `every 3 months`, Todoist's `every!` (repeat from completion). Implication now: quick add leaves recurring phrases in the name (G5.1e).
+- **Repeat from completion** — Todoist's `every!`. Recurring tasks themselves were added at G15, always repeating from the due date (G15.3).
 - **Times of day** — due and start times (`tomorrow at 4pm`). Dates are date-only today (G2.1b), so this needs a schema change.
 - **Homebrew tap** — `brew install azntaiji/tap/taskmoth`, published by GoReleaser to a separate `azntaiji/homebrew-tap` repo (needs that repo and a token secret).
 - **More themes** (G9.1–G9.5 added `default` and `dracula`) — an in-app theme picker that writes `config.toml`, user-defined themes (e.g. files in `~/.config/taskmoth/themes/` mapping Figma token names to colours), possibly including a light theme. Implication now: every colour goes through `theme.Colors` (named after its Figma variable); views never construct colours.
@@ -460,6 +460,15 @@ Record every gate outcome here before proceeding.
 | G14.11 | **The Edit Due date dialog and Add Task show how many tasks are due on the date being entered**, updated as you type, whenever a due date parses (Add Task: an `@due`). Edit Start date doesn't. | 2026-11-17 | Operator request alongside the Calendar, to see a day's load while assigning. |
 | G14.12 | **The line reads `mon · 2026-11-23 · 1 done / 5 due`**, muted, under the input (Edit Due) or the preview (Add Task). "Due" counts every task due that day, done or not (as in G14.2), not counting the task being edited. The line is blank while the input is empty or doesn't parse. | 2026-11-17 | |
 | G14.13 | **Released as a minor version, v1.3.0**, once committed and pushed. | 2026-11-17 | The operator approved "v0.14.0"; the latest tag is already v1.2.0, so the minor bump is v1.3.0. |
+| G15.1 | **Recurring tasks get a schema change (version 4):** `tasks.repeat` holds the rule in a canonical text form, and `tasks.series_id` links the occurrences of one series. Exports gain `repeat` (the rule in words) and `series_id`, after the G10.3 fields. | 2026-11-18 | Recurring tasks were a §7 future feature. The operator chose Todoist-style natural language. |
+| G15.2 | **The due date owns repetition.** Quick add and Edit Due date (`t`) accept a repeat phrase (`every monday`), which sets the rule and the first due date. Clearing the due date clears the rule. There's no separate key. The dialog starts with the rule (`every mon`); saving it unchanged keeps this occurrence's date, and a plain date moves just this occurrence and keeps the rule. | 2026-11-18 | As in Todoist's date field. The last two points were settled during the build. |
+| G15.3 | **Completing a repeating task keeps history:** the occurrence is marked done (and loses its rule), and a new open task is created for the next date, with the rule and the same `series_id`. The next date always comes from the due date; an overdue task skips to the first occurrence after today. There's no `every!` (repeat from completion). | 2026-11-18 | The operator chose history over Todoist's roll-forward, for the Calendar's done counts and later analytics, and dropped `every!`. |
+| G15.4 | **The next occurrence copies** the name, description, project, priority and duration. The start date moves by the same number of days as the due date. | 2026-11-18 | |
+| G15.5 | **Reopening a completed occurrence only reopens it.** The next occurrence stays, and the reopened task doesn't repeat. | 2026-11-18 | |
+| G15.6 | **Archiving a repeating task stops the series;** unarchiving it brings the rule back. Archived tasks never create occurrences. | 2026-11-18 | |
+| G15.7 | **Grammar:** `every` or `ev` + `day`/`week`/`month`/`year`, `N <units>`, `other <unit or weekday>`, a weekday list (`mon, wed`, `mon and wed`), `weekday`, `weekend`, `15th`, `last day`, `first`…`fourth`/`last <weekday>`, `<month> <day>`; bare `daily`, `weekly`, `monthly`, `yearly`; an optional `starting <date>`. See Appendix A. | 2026-11-18 | Todoist's core set plus `every nov 20`, `every first mon`, `every other …` and `ev`, as the operator asked. No `until`/`for N times`. Supersedes the recurring part of G5.1e. `on [the] <days>` after a count (`every 3 weeks on mon`) was added during the build so every rule's text reads back as the same rule; a rule that leaves the day unsaid takes it from its first date (`every week` → `every wed`). |
+| G15.8 | **Display:** rows show `↻ every mon` on the second line (`@` for `↻` with `--ascii`); Add Task's preview and the Single Task view show the rule; Edit Due date's note line shows `↻ every monday · next 2026-11-23`. Completing one says "Next: mon · 2026-11-23." The Calendar counts only real tasks, so a series shows its next occurrence. | 2026-11-18 | Code only, like G11.4–G14.10. |
+| G15.9 | **Released as v1.4.0**, from the `feat/recurring-tasks` branch once merged. | 2026-11-18 | |
 
 ---
 
@@ -476,6 +485,7 @@ Matching is case-insensitive and works on whole words. The examples assume today
 | Duration | `~` + duration | `~30m`, `~30min`, `~30 minutes`, `~1.5h`, `~2h`, `~2 hours`, `~1h30m`, `~1h 30m`, `~90` (a bare number means minutes). Stored as whole minutes, rounded. `~` is required. |
 | Start | `s:` + date phrase | |
 | Due | `@` + date phrase, or a bare date phrase | Bare phrases are limited by G5.1f. |
+| Repeat | `every`/`ev` + repeat phrase, or bare `daily`, `weekly`, `monthly`, `yearly`, `annually` | Sets the rule and, unless a due date is also given, the first due date (G15.2, G15.7). See [Repeating](#repeating). |
 | Literal | `\` + word | The backslash is removed and the word stays text (`\friday`, `\#1`). |
 
 - **Repeated fields:** if a field appears more than once, the **last** occurrence counts and the earlier ones stay in the name.
@@ -495,7 +505,44 @@ Matching is case-insensitive and works on whole words. The examples assume today
 - **Ordinal day:** `27th` is the next 27th (this month if it hasn't passed).
 - **Named points:** `mid <month>` is the 15th. `end of month` (or `eom`, sigil only) is the last day of this month. `end of <month>` is the last day of that month.
 - **Clearing:** `no date` / `no due date` means no date. It's mainly for the edit dialogs.
-- **Not recognised; stays in the name:** times (`at 4pm`, `16:00`, `4pm`; G5.1e) and recurring phrases (`every monday`, `daily`).
+- **Not recognised; stays in the name:** times (`at 4pm`, `16:00`, `4pm`; G5.1e) and `every!` (repeat from completion; G15.3).
+
+### Repeating (G15.7, approved 2026-11-18)
+
+- **Forms:** `every` (or `ev`), then:
+  - `day`, `week`, `month`, `year` (or the plural), optionally with a count: `every 3 days`, `every other week`;
+  - with a count or `other`, optionally `on [the] <days>`: `every 3 weeks on mon, wed`, `every other month on the 1st`;
+  - or just `<days>`: `every monday`, `every other thursday`.
+- **`<days>`:** a weekday list (`mon`, `mon, wed`, `mon and wed`; short forms allowed), `weekday`, `weekend`, an ordinal day (`15th`), `last day`, an nth weekday (`first mon` … `fourth mon`, `last fri`), or a month and day (`nov 20`, `20 nov`).
+- **Bare words:** `daily`, `weekly`, `monthly`, `yearly`, `annually`.
+- **`starting <date phrase>`** after the rule sets the first date to look from.
+- **First due date:** the first occurrence on or after the due date given (`@`), the `starting` date, or today. A rule that leaves the day unsaid takes it from there: `every week` from Wednesday is `every wed`, `every month` on the 10th is `every 10th`.
+- **Shown** as the rule in words, which reads back as the same rule: `every mon, wed, fri`, `every other thu`, `every 3 months on the 1st`.
+
+| # | Input | Name | Project | Due | Repeat | Pri |
+|---|---|---|---|---|---|---|
+| R1 | `Water plants every day` | Water plants | | 2026-11-10 | every day | |
+| R2 | `Standup every weekday` | Standup | | 2026-11-10 | every weekday | |
+| R3 | `Team sync every monday` | Team sync | | 2026-11-16 | every mon | |
+| R4 | `Gym every mon, wed and fri` | Gym | | 2026-11-11 | every mon, wed, fri | |
+| R5 | `Bins every other thursday` | Bins | | 2026-11-12 | every other thu | |
+| R6 | `Backups every 3 days` | Backups | | 2026-11-10 | every 3 days | |
+| R7 | `Pay rent every month` | Pay rent | | 2026-11-10 | every 10th | |
+| R8 | `Pay card every 15th` | Pay card | | 2026-11-15 | every 15th | |
+| R9 | `Budget every last day` | Budget | | 2026-11-30 | every last day | |
+| R10 | `Book club every first mon` | Book club | | 2026-12-07 | every first mon | |
+| R11 | `Anniversary every nov 20` | Anniversary | | 2026-11-20 | every nov 20 | |
+| R12 | `Review weekly` | Review | | 2026-11-10 | every tue | |
+| R13 | `Daily standup` | standup | | 2026-11-10 | every day | |
+| R14 | `Water ferns ev 2 weeks` | Water ferns | | 2026-11-10 | every other tue | |
+| R15 | `Taxes every 3 months starting jan 1` | Taxes | | 2027-01-01 | every 3 months on the 1st | |
+| R16 | `Stretch every day starting tomorrow` | Stretch | | 2026-11-11 | every day | |
+| R17 | `Inspect every other month on the 1st` | Inspect | | 2026-12-01 | every other month on the 1st | |
+| R18 | `Clean every 2 weeks on sat, sun` | Clean | | 2026-11-14 | every other weekend | |
+| R19 | `Call mom every sunday #family p2` | Call mom | family | 2026-11-15 | every sun | P2 |
+| R20 | `Every time I travel` | Every time I travel | | – | – | |
+| R21 | `Pay every! 3 days` | Pay every! 3 days | | – | – | |
+| R22 | `Walk \every \monday` | Walk every monday | | – | – | |
 
 ### Examples (Tue 2026-11-10)
 

@@ -86,11 +86,19 @@ func (m *Memory) CreateTask(_ context.Context, t task.Task) (task.Task, error) {
 	if err := m.checkProject(t.ProjectID); err != nil {
 		return task.Task{}, err
 	}
+	return m.insert(t)
+}
+
+// insert assigns a new task's ID, timestamps and series and stores it.
+// The caller holds m.mu.
+func (m *Memory) insert(t task.Task) (task.Task, error) {
+	var err error
 	if t.ID, err = m.opts.NewID(); err != nil {
 		return task.Task{}, err
 	}
 	t.CreatedAt = m.now()
 	t.UpdatedAt = t.CreatedAt
+	t = withSeries(t)
 	m.tasks[t.ID] = t
 	return t, nil
 }
@@ -112,7 +120,8 @@ func (m *Memory) UpdateTask(_ context.Context, t task.Task) (task.Task, error) {
 		}
 	}
 	cur.Name, cur.Description, cur.ProjectID, cur.Priority = t.Name, t.Description, t.ProjectID, t.Priority
-	cur.Start, cur.Due, cur.DurationMin = t.Start, t.Due, t.DurationMin
+	cur.Start, cur.Due, cur.DurationMin, cur.Repeat = t.Start, t.Due, t.DurationMin, t.Repeat
+	cur = withSeries(cur)
 	cur.UpdatedAt = m.now()
 	m.tasks[t.ID] = cur
 	return cur, nil
@@ -135,6 +144,17 @@ func (m *Memory) modify(id task.ID, f func(*task.Task, time.Time)) (task.Task, e
 
 // SetDone implements Store.
 func (m *Memory) SetDone(_ context.Context, id task.ID, done bool) (task.Task, error) {
+	m.mu.Lock()
+	cur, ok := m.tasks[id]
+	if ok && done && repeats(cur) { // G15.3
+		if _, err := m.insert(nextFor(cur, m.opts.Now())); err != nil {
+			m.mu.Unlock()
+			return task.Task{}, err
+		}
+		cur.Repeat = task.Rule{}
+		m.tasks[id] = cur
+	}
+	m.mu.Unlock()
 	return m.modify(id, func(t *task.Task, now time.Time) {
 		switch {
 		case !done:

@@ -34,6 +34,10 @@ type Task struct {
 	Start       Date   // zero = none
 	Due         Date   // zero = none
 	DurationMin int    // estimated minutes; 0 = none
+	// Repeat is how the task repeats; zero = it doesn't (G15.1). A repeating
+	// task always has a due date. SeriesID links a series' occurrences.
+	Repeat   Rule
+	SeriesID ID
 
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
@@ -80,6 +84,9 @@ func (t Task) Validate() error {
 	}
 	if t.DurationMin < 0 {
 		return invalid("duration must not be negative")
+	}
+	if !t.Repeat.IsZero() && t.Due.IsZero() {
+		return invalid("a repeating task needs a due date")
 	}
 	return nil
 }

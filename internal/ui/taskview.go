@@ -183,6 +183,9 @@ func (a *App) taskBody(t theme.Theme, tk task.Task, bw int) []string {
 	if tk.DurationMin > 0 {
 		parts = append(parts, base.Render(view.Duration(tk.DurationMin)))
 	}
+	if !tk.Repeat.IsZero() { // G15.8
+		parts = append(parts, base.Render(view.RepeatText(t.G, tk.Repeat)))
+	}
 	out = append(out, w.Fit(strings.Join(parts, base.Render("  ")), bw, base))
 	if tk.Done() {
 		out = append(out, help(t, "Completed "+task.DateOf(tk.CompletedAt.In(a.clock.Location())).String()))

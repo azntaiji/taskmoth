@@ -112,6 +112,9 @@ func runList(ctx context.Context, w io.Writer, s store.Store, view string, now t
 		if !t.Start.IsZero() {
 			meta = append(meta, "s:"+t.Start.String())
 		}
+		if !t.Repeat.IsZero() {
+			meta = append(meta, "↻ "+t.Repeat.String())
+		}
 		due := ""
 		switch task.DueStateOf(t, today) {
 		case task.DueToday:

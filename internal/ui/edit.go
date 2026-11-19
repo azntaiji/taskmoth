@@ -176,15 +176,37 @@ var dateHelp = []string{
 	"Examples: 2026-11-02, today, in 3 days, next monday",
 }
 
+// dueHelp is Edit Due date's help, which also takes a repeat (G15.2).
+var dueHelp = []string{
+	dateHelp[0],
+	"Examples: 2026-11-02, next monday, every friday",
+}
+
 // newDateDialog is Edit Start date (40:15310) or Edit Due date (40:15226).
-// Empty input or "no date" clears it (G6.3).
+// Empty input or "no date" clears it (G6.3). Edit Due date also takes a
+// repeat phrase, which sets the rule and the first due date; it starts with
+// the rule when there is one, and clearing the date clears the rule (G15.2).
+// A plain date reschedules this occurrence and keeps the rule.
 func newDateDialog(_ *App, t task.Task, due bool) dialog {
-	title, cur := "Edit Start date", t.Start
+	title, cur, helpText := "Edit Start date", t.Start.String(), dateHelp
 	if due {
-		title, cur = "Edit Due date", t.Due
+		title, cur, helpText = "Edit Due date", t.Due.String(), dueHelp
+		if !t.Repeat.IsZero() {
+			cur = t.Repeat.String()
+		}
 	}
-	d := newTextEdit(title, dateHelp, cur.String(), 1, false, false, t,
+	initial := cur
+	d := newTextEdit(title, helpText, cur, 1, false, false, t,
 		func(a *App, v string) (task.Task, string) {
+			if due && !t.Repeat.IsZero() && v == initial {
+				return t, "" // unchanged: keep this occurrence's date
+			}
+			if due {
+				if r, first, ok := nlp.ParseRepeat(v, task.DateOf(a.clock)); ok {
+					t.Repeat, t.Due = r, first
+					return t, ""
+				}
+			}
 			var d task.Date
 			if strings.TrimSpace(v) != "" {
 				var ok bool
@@ -194,13 +216,24 @@ func newDateDialog(_ *App, t task.Task, due bool) dialog {
 			}
 			if due {
 				t.Due = d
+				if d.IsZero() {
+					t.Repeat = task.Rule{} // G15.2
+				}
 			} else {
 				t.Start = d
 			}
 			return t, ""
 		})
 	if due {
-		d.note = func(a *App, th theme.Theme, v string) string { return a.dueLoadLine(th, v, t.ID) }
+		d.note = func(a *App, th theme.Theme, v string) string {
+			if !t.Repeat.IsZero() && v == initial {
+				return view.RepeatText(th.G, t.Repeat) + " " + th.G.Dot + " next " + t.Due.String()
+			}
+			if r, first, ok := nlp.ParseRepeat(v, task.DateOf(a.clock)); ok {
+				return view.RepeatText(th.G, r) + " " + th.G.Dot + " next " + first.String() // G15.8
+			}
+			return a.dueLoadLine(th, v, t.ID)
+		}
 	}
 	return d
 }

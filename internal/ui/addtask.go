@@ -183,7 +183,7 @@ func (d *addTaskDialog) submit(a *App, confirmedNew bool) tea.Cmd {
 		return nil
 	}
 	t := task.Task{Name: r.Name, Priority: r.Priority, Start: r.Start, Due: r.Due, DurationMin: r.DurationMin,
-		ProjectID: d.defaultProject}
+		Repeat: r.Repeat, ProjectID: d.defaultProject}
 	newProject := ""
 	if r.Project != "" {
 		t.ProjectID = ""
@@ -320,6 +320,9 @@ func (d *addTaskDialog) preview(a *App, t theme.Theme, r nlp.Result) string {
 	}
 	if !r.Start.IsZero() {
 		parts = append(parts, "s:"+r.Start.String())
+	}
+	if !r.Repeat.IsZero() {
+		parts = append(parts, view.RepeatText(t.G, r.Repeat)) // G15.8
 	}
 	if r.DurationMin > 0 {
 		parts = append(parts, view.Duration(r.DurationMin))

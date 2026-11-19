@@ -626,14 +626,15 @@ func (l *List) renderRow(t theme.Theme, width int, tk task.Task, selected bool, 
 	if l.Spec.Kind == Project {
 		projects = nil // G7.5: a project's own list doesn't repeat its name
 	}
-	for _, s := range metadata(tk, projects) {
+	for _, s := range metadata(t.G, tk, projects) {
 		line2 += meta.Render(" " + s + " ")
 	}
 	return []string{line1, w.Fit(line2, width, fill)}
 }
 
-// metadata is the second row: #project, ~duration, s:start.
-func metadata(tk task.Task, projects map[task.ID]string) []string {
+// metadata is the second row: #project, ~duration, s:start, ↻ repeat
+// (G15.8).
+func metadata(g theme.Glyphs, tk task.Task, projects map[task.ID]string) []string {
 	var out []string
 	if name, ok := projects[tk.ProjectID]; ok {
 		out = append(out, "#"+name)
@@ -644,7 +645,15 @@ func metadata(tk task.Task, projects map[task.ID]string) []string {
 	if !tk.Start.IsZero() {
 		out = append(out, "s:"+tk.Start.String())
 	}
+	if !tk.Repeat.IsZero() {
+		out = append(out, RepeatText(g, tk.Repeat))
+	}
 	return out
+}
+
+// RepeatText is "↻ every mon" (G15.8).
+func RepeatText(g theme.Glyphs, r task.Rule) string {
+	return g.Repeat + " " + r.String()
 }
 
 // StatusBar renders the view's status bar (decision G3.2). pending replaces

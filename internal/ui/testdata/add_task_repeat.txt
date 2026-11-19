@@ -1,0 +1,24 @@
+taskmoth ▸ Today                                       tues · 2026-11-10 · 15:26
+                                                                               │
+▶ [ ]  P1  File insurance reimbursements                                today  │
+          ┌─ Add Task ───────────────────────────────────────────────┐         │
+          │                                                          │         │
+  [ ]  P2 │ Add a new task using natural language. Options: # to     │  today  │
+          │ assign to a project, s: to set start date, @ to set due  │         │
+          │ date, ~ to set duration, ! to set priority. Tasks        │         │
+  [ ]  P2 │ without options are sent to the Inbox.                   │  today  │
+          │                                                          │         │
+          │ > Water plants every mon and thu #reminders              │         │
+  [ ]  P3 │                                                          │overdue  │
+          │                                                          │         │
+          │                                                          │         │
+  [x]  P3 │ ▶ #reminders                                             │overdue  │
+          │ → #reminders · due 2026-11-12 · ↻ every mon, thu · P4    │         │
+          │ thurs · 2026-11-12 · 0 done / 0 due                      │         │
+  [x]  P4 │                                                          │  today  │
+          │ tab complete  ↑ / ↓ select  enter add task  esc hide lis │         │
+          └──────────────────────────────────────────────────────────┘         │
+                                                                               │
+  Today   4/6 tasks · ~8h total · ~3.75h remaining                   s:priority 
+ q add  space done  e edit/view  x archive  s sort  ? shortcuts  / search       
+ g i inbox  g t today  g u upcoming  g p projects  g o overdue  g a all         

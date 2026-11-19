@@ -83,19 +83,8 @@ func saturday(today task.Date) task.Date {
 	return today.AddDays((6 - int(wd(today)) + 7) % 7)
 }
 
-func daysIn(y int, m time.Month) int {
-	return time.Date(y, m+1, 0, 0, 0, 0, 0, time.UTC).Day()
-}
-
 func valid(y int, m time.Month, d int) bool {
-	return m >= 1 && m <= 12 && d >= 1 && d <= daysIn(y, m)
-}
-
-// addMonths adds n months, clamping the day to the target month's length.
-func addMonths(d task.Date, n int) task.Date {
-	t := time.Date(d.Year, d.Month+time.Month(n), 1, 0, 0, 0, 0, time.UTC)
-	y, m := t.Year(), t.Month()
-	return task.Date{Year: y, Month: m, Day: min(d.Day, daysIn(y, m))}
+	return m >= 1 && m <= 12 && d >= 1 && d <= task.DaysIn(y, m)
 }
 
 // nextOccurrence returns month/day in today's year, or next year if that has
@@ -147,9 +136,9 @@ func unit(w string) (func(task.Date, int) task.Date, bool) {
 	case "week":
 		return func(d task.Date, n int) task.Date { return d.AddDays(7 * n) }, true
 	case "month":
-		return addMonths, true
+		return task.AddMonths, true
 	case "year":
-		return func(d task.Date, n int) task.Date { return addMonths(d, 12*n) }, true
+		return func(d task.Date, n int) task.Date { return task.AddMonths(d, 12*n) }, true
 	}
 	return nil, false
 }
@@ -226,7 +215,7 @@ func parseOneWord(w string, today task.Date, sigil bool) (task.Date, bool) {
 	case "tom":
 		return today.AddDays(1), sigil
 	case "eom":
-		return task.Date{Year: today.Year, Month: today.Month, Day: daysIn(today.Year, today.Month)}, sigil
+		return task.Date{Year: today.Year, Month: today.Month, Day: task.DaysIn(today.Year, today.Month)}, sigil
 	}
 	if d, ok := weekday(w, sigil); ok {
 		return nextWeekday(today, d), true
@@ -234,7 +223,7 @@ func parseOneWord(w string, today task.Date, sigil bool) (task.Date, bool) {
 	if m := ordinalRe.FindStringSubmatch(w); m != nil {
 		n, _ := strconv.Atoi(m[1])
 		for i := 0; i < 12; i++ { // the next month that has this day
-			c := addMonths(task.Date{Year: today.Year, Month: today.Month, Day: 1}, i)
+			c := task.AddMonths(task.Date{Year: today.Year, Month: today.Month, Day: 1}, i)
 			if valid(c.Year, c.Month, n) {
 				if d := (task.Date{Year: c.Year, Month: c.Month, Day: n}); !d.Before(today) {
 					return d, true
@@ -257,7 +246,7 @@ func parseTwoWords(ws []string, today task.Date) (task.Date, bool) {
 		case "week":
 			return monday(today).AddDays(7), true
 		case "month":
-			return addMonths(task.Date{Year: today.Year, Month: today.Month, Day: 1}, 1), true
+			return task.AddMonths(task.Date{Year: today.Year, Month: today.Month, Day: 1}, 1), true
 		case "year":
 			return task.Date{Year: today.Year + 1, Month: 1, Day: 1}, true
 		case "weekend":
@@ -305,11 +294,11 @@ func parseThreeWords(ws []string, today task.Date) (task.Date, bool) {
 	}
 	if ws[0] == "end" && ws[1] == "of" {
 		if ws[2] == "month" {
-			return task.Date{Year: today.Year, Month: today.Month, Day: daysIn(today.Year, today.Month)}, true
+			return task.Date{Year: today.Year, Month: today.Month, Day: task.DaysIn(today.Year, today.Month)}, true
 		}
 		if m, ok := months[ws[2]]; ok {
 			for y := today.Year; y <= today.Year+1; y++ {
-				if d := (task.Date{Year: y, Month: m, Day: daysIn(y, m)}); !d.Before(today) {
+				if d := (task.Date{Year: y, Month: m, Day: task.DaysIn(y, m)}); !d.Before(today) {
 					return d, true
 				}
 			}

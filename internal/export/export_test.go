@@ -25,7 +25,8 @@ func sample() ([]task.Project, []task.Task) {
 	}
 	tasks := []task.Task{
 		{ID: "t2", Name: "Ship export", Description: "CSV, then JSON\nwith \"quotes\", commas", ProjectID: "p2",
-			Priority: 1, Due: task.Date{Year: 2026, Month: 11, Day: 20}, DurationMin: 90, CreatedAt: created, UpdatedAt: created},
+			Priority: 1, Due: task.Date{Year: 2026, Month: 11, Day: 20}, DurationMin: 90, CreatedAt: created, UpdatedAt: created,
+			Repeat: task.Rule{Every: 1, Unit: task.Month, MonthDay: 20}, SeriesID: "t0"},
 		{ID: "t1", Name: "Buy milk", Priority: 4, Start: task.Date{Year: 2026, Month: 11, Day: 11},
 			CreatedAt: created, UpdatedAt: done, CompletedAt: done, ArchivedAt: done},
 	}
@@ -44,8 +45,8 @@ func TestCSV(t *testing.T) {
 	}
 	want := [][]string{
 		CSVHeader,
-		{"t1", "Buy milk", "", "", "4", "2026-11-11", "", "", "2026-11-10T08:00:00Z", "2026-11-12T18:15:00Z", "2026-11-12T18:15:00Z", "2026-11-12T18:15:00Z"},
-		{"t2", "Ship export", "CSV, then JSON\nwith \"quotes\", commas", "work", "1", "", "2026-11-20", "90", "2026-11-10T08:00:00Z", "2026-11-10T08:00:00Z", "", ""},
+		{"t1", "Buy milk", "", "", "4", "2026-11-11", "", "", "2026-11-10T08:00:00Z", "2026-11-12T18:15:00Z", "2026-11-12T18:15:00Z", "2026-11-12T18:15:00Z", "", ""},
+		{"t2", "Ship export", "CSV, then JSON\nwith \"quotes\", commas", "work", "1", "", "2026-11-20", "90", "2026-11-10T08:00:00Z", "2026-11-10T08:00:00Z", "", "", "every 20th", "t0"},
 	}
 	if !reflect.DeepEqual(rows, want) {
 		t.Errorf("rows:\n%q\nwant:\n%q", rows, want)
@@ -73,11 +74,11 @@ func TestJSON(t *testing.T) {
 			map[string]any{"id": "t1", "name": "Buy milk", "description": "", "project_id": nil, "project": nil,
 				"priority": 4.0, "start": "2026-11-11", "due": nil, "duration_min": nil,
 				"created_at": "2026-11-10T08:00:00Z", "updated_at": "2026-11-12T18:15:00Z",
-				"completed_at": "2026-11-12T18:15:00Z", "archived_at": "2026-11-12T18:15:00Z"},
+				"completed_at": "2026-11-12T18:15:00Z", "archived_at": "2026-11-12T18:15:00Z", "repeat": nil, "series_id": nil},
 			map[string]any{"id": "t2", "name": "Ship export", "description": "CSV, then JSON\nwith \"quotes\", commas",
 				"project_id": "p2", "project": "work", "priority": 1.0, "start": nil, "due": "2026-11-20", "duration_min": 90.0,
 				"created_at": "2026-11-10T08:00:00Z", "updated_at": "2026-11-10T08:00:00Z",
-				"completed_at": nil, "archived_at": nil},
+				"completed_at": nil, "archived_at": nil, "repeat": "every 20th", "series_id": "t0"},
 		},
 	}
 	if !reflect.DeepEqual(got, want) {
