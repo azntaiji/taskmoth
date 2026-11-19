@@ -63,6 +63,13 @@ var samples = []sample{
 	{"Go see wildwood", "movies-tv", 3, noDate, 12, 120, false, ""},
 }
 
+// repeats are the sample tasks that repeat (G15): every day, and every week
+// on whichever weekday the seeded due date falls.
+var repeats = map[string]task.Rule{
+	"Practice meditating": {Every: 1, Unit: task.Day},
+	"Put out the garbage": {Every: 1, Unit: task.Week},
+}
+
 // Run fills an empty store with the sample data, with dates shifted so that
 // DesignToday maps to today.
 func Run(ctx context.Context, s store.Store, today task.Date) (projects, tasks int, err error) {
@@ -97,6 +104,7 @@ func Run(ctx context.Context, s store.Store, today task.Date) (projects, tasks i
 		t, err := s.CreateTask(ctx, task.Task{
 			Name: x.name, Description: x.description, ProjectID: ids[x.project], Priority: x.priority,
 			Start: shift(x.start), Due: shift(x.due), DurationMin: x.minutes,
+			Repeat: repeats[x.name].Anchor(shift(x.due)),
 		})
 		if err != nil {
 			return 0, 0, fmt.Errorf("task %q: %w", x.name, err)

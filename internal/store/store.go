@@ -36,11 +36,14 @@ type Store interface {
 	// exist and not be archived.
 	CreateTask(ctx context.Context, t task.Task) (task.Task, error)
 	// UpdateTask saves the editable fields (name, description, project,
-	// priority, dates, duration). Completion and archive state are unchanged.
+	// priority, dates, duration, repeat rule). The series is kept, or started
+	// when a rule is first set. Completion and archive state are unchanged.
 	// A changed project must exist and not be archived.
 	UpdateTask(ctx context.Context, t task.Task) (task.Task, error)
 	// SetDone marks a task completed or open. Completing an already completed
-	// task keeps its original completion time.
+	// task keeps its original completion time. Completing a repeating task
+	// clears its rule and creates the next occurrence, which carries the rule
+	// and series on (G15.3); reopening it doesn't undo that (G15.5).
 	SetDone(ctx context.Context, id task.ID, done bool) (task.Task, error)
 	// Archive archives a task (G4.4); archiving it again keeps the original
 	// time. Unarchive restores it; if its project is archived, the task moves
@@ -98,6 +101,22 @@ func NewID() (task.ID, error) {
 	}
 	return task.ID(u.String()), nil
 }
+
+// withSeries starts a series on a task that repeats but has none yet: the
+// task's own ID (G15.1).
+func withSeries(t task.Task) task.Task {
+	if !t.Repeat.IsZero() && t.SeriesID == "" {
+		t.SeriesID = t.ID
+	}
+	return t
+}
+
+// repeats reports whether completing t creates a next occurrence: it
+// repeats, is open and isn't archived (G15.3, G15.6).
+func repeats(t task.Task) bool { return !t.Repeat.IsZero() && !t.Done() && !t.Archived() }
+
+// nextFor is the occurrence that follows t when it's completed at now.
+func nextFor(t task.Task, now time.Time) task.Task { return task.NextOccurrence(t, task.DateOf(now)) }
 
 // prepareNew validates a task for creation and fills in defaults.
 func prepareNew(t task.Task) (task.Task, error) {

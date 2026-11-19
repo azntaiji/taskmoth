@@ -88,6 +88,91 @@ func TestAppendixA(t *testing.T) {
 	}
 }
 
+// TestAppendixARepeating is Appendix A's repeating examples (G15.7), row
+// for row. Repeat is the anchored rule as shown (Rule.String).
+func TestAppendixARepeating(t *testing.T) {
+	tests := []struct {
+		row                       int
+		in, name, project, due, r string
+		priority                  int
+	}{
+		{1, "Water plants every day", "Water plants", "", "2026-11-10", "every day", 0},
+		{2, "Standup every weekday", "Standup", "", "2026-11-10", "every weekday", 0},
+		{3, "Team sync every monday", "Team sync", "", "2026-11-16", "every mon", 0},
+		{4, "Gym every mon, wed and fri", "Gym", "", "2026-11-11", "every mon, wed, fri", 0},
+		{5, "Bins every other thursday", "Bins", "", "2026-11-12", "every other thu", 0},
+		{6, "Backups every 3 days", "Backups", "", "2026-11-10", "every 3 days", 0},
+		{7, "Pay rent every month", "Pay rent", "", "2026-11-10", "every 10th", 0},
+		{8, "Pay card every 15th", "Pay card", "", "2026-11-15", "every 15th", 0},
+		{9, "Budget every last day", "Budget", "", "2026-11-30", "every last day", 0},
+		{10, "Book club every first mon", "Book club", "", "2026-12-07", "every first mon", 0},
+		{11, "Anniversary every nov 20", "Anniversary", "", "2026-11-20", "every nov 20", 0},
+		{12, "Review weekly", "Review", "", "2026-11-10", "every tue", 0},
+		{13, "Daily standup", "standup", "", "2026-11-10", "every day", 0},
+		{14, "Water ferns ev 2 weeks", "Water ferns", "", "2026-11-10", "every other tue", 0},
+		{15, "Taxes every 3 months starting jan 1", "Taxes", "", "2027-01-01", "every 3 months on the 1st", 0},
+		{16, "Stretch every day starting tomorrow", "Stretch", "", "2026-11-11", "every day", 0},
+		{17, "Inspect every other month on the 1st", "Inspect", "", "2026-12-01", "every other month on the 1st", 0},
+		{18, "Clean every 2 weeks on sat, sun", "Clean", "", "2026-11-14", "every other weekend", 0},
+		{19, "Call mom every sunday #family p2", "Call mom", "family", "2026-11-15", "every sun", 2},
+		{20, "Every time I travel", "Every time I travel", "", "", "", 0},
+		{21, "Pay every! 3 days", "Pay every! 3 days", "", "", "", 0},
+		{22, `Walk \every \monday`, "Walk every monday", "", "", "", 0},
+	}
+	for _, tt := range tests {
+		r := Parse(tt.in, today)
+		if r.Name != tt.name || r.Project != tt.project || r.Due != d(tt.due) || r.Repeat.String() != tt.r || r.Priority != tt.priority {
+			t.Errorf("row %d %q:\n got  name=%q project=%q due=%s repeat=%q pri=%d\n want name=%q project=%q due=%s repeat=%q pri=%d",
+				tt.row, tt.in, r.Name, r.Project, r.Due, r.Repeat, r.Priority, tt.name, tt.project, tt.due, tt.r, tt.priority)
+		}
+	}
+}
+
+// Every rule's String reads back as the same rule (the edit dialog starts
+// with it, G15.2).
+func TestRepeatRoundTrip(t *testing.T) {
+	for _, in := range []string{"every day", "every weekday", "every mon, wed, fri", "every other thu", "every 3 days",
+		"every 15th", "every last day", "every first mon", "every last fri", "every nov 20", "every other tue",
+		"every 3 months on the 1st", "every other month on the last day", "every other year on feb 29",
+		"every 3 weeks on mon, wed", "every other weekend", "every 4 months on the second wed"} {
+		r, first, ok := ParseRepeat(in, today)
+		if !ok {
+			t.Errorf("ParseRepeat(%q) failed", in)
+			continue
+		}
+		if r.String() != in {
+			t.Errorf("ParseRepeat(%q).String() = %q", in, r.String())
+		}
+		again, first2, ok := ParseRepeat(r.String(), first)
+		if !ok || again != r || first2 != first {
+			t.Errorf("%q doesn't read back: %+v %s vs %+v %s", in, again, first2, r, first)
+		}
+	}
+	for _, bad := range []string{"", "every", "every 3", "every blue moon", "every day please", "tomorrow", "every 0 days"} {
+		if _, _, ok := ParseRepeat(bad, today); ok {
+			t.Errorf("ParseRepeat(%q) should fail", bad)
+		}
+	}
+}
+
+func TestRepeatSpanAndToggle(t *testing.T) {
+	in := "Gym every mon and wed #health"
+	r := Parse(in, today)
+	rs := []rune(in)
+	for _, s := range r.Spans {
+		if s.Kind == KindRepeat && string(rs[s.Start:s.End]) != "every mon and wed" {
+			t.Errorf("repeat span = %q", string(rs[s.Start:s.End]))
+		}
+	}
+	out, _, ok := ToggleAt(in, 6, today)
+	if !ok || out != `Gym \every \mon \and \wed #health` {
+		t.Errorf("ToggleAt = %q", out)
+	}
+	if r := Parse(out, today); !r.Repeat.IsZero() || r.Name != "Gym every mon and wed" {
+		t.Errorf("escaped repeat parsed as %+v", r)
+	}
+}
+
 func TestSpans(t *testing.T) {
 	in := "Change the laundry #oneofftasks @in 2 days ~30m !p2 s:tomorrow"
 	r := Parse(in, today)
@@ -187,6 +272,7 @@ func FuzzParse(f *testing.F) {
 	for _, s := range []string{
 		"Change the laundry #oneofftasks @in 2 days ~30m !p2 s:tomorrow", `Fix \friday bug`, "~", "@", "#", "s:",
 		"2 days before 2 days before nov 20", "p1 p2 p3", "日本語 tomorrow", "\x00\xff", "  lots   of   space  ",
+		"every mon, , and wed and", "ev other 3 weeks on the last", "every 999 years starting every day", "every , mon",
 	} {
 		f.Add(s)
 	}
@@ -209,6 +295,11 @@ func FuzzParse(f *testing.F) {
 		for _, w := range strings.Fields(r.Name) {
 			if !words[w] {
 				t.Fatalf("name word %q not in input %q", w, in)
+			}
+		}
+		if !r.Repeat.IsZero() {
+			if r.Due.IsZero() || !r.Repeat.Next(r.Due).After(r.Due) {
+				t.Fatalf("repeat %+v with due %s for %q", r.Repeat, r.Due, in)
 			}
 		}
 		_, _, _ = ToggleAt(in, n/2, today)

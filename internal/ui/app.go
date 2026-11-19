@@ -560,12 +560,21 @@ func nextOpen(rows []task.Task, id task.ID) task.ID {
 	return id
 }
 
-// setDone completes an open task or reopens a completed one.
+// setDone completes an open task or reopens a completed one. Completing a
+// repeating task says when the next one is due (G15.8).
 func (a *App) setDone(t task.Task) tea.Cmd {
 	s := a.store
+	notice := ""
+	if !t.Done() && !t.Repeat.IsZero() && !t.Archived() {
+		next := task.NextOccurrence(t, task.DateOf(a.clock))
+		notice = "Next: " + view.Day(a.theme, next.Due) + "."
+	}
 	return func() tea.Msg {
 		if _, err := s.SetDone(context.Background(), t.ID, !t.Done()); err != nil {
 			return errMsg{fmt.Errorf("updating %q: %w", t.Name, err)}
+		}
+		if notice != "" {
+			return doneMsg{notice: notice}
 		}
 		return reloadMsg{}
 	}

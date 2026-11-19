@@ -67,6 +67,7 @@ func TestContract(t *testing.T) {
 			t.Run("project archive", func(t *testing.T) { testProjectArchive(t, open) })
 			t.Run("errors", func(t *testing.T) { testErrors(t, open) })
 			t.Run("settings", func(t *testing.T) { testSettings(t, open) })
+			t.Run("repeating tasks", func(t *testing.T) { testRepeat(t, open) })
 		})
 	}
 }
@@ -728,4 +729,143 @@ func writeV1(t *testing.T, path, taskName string) {
 			t.Fatal(err)
 		}
 	}
+}
+
+// testRepeat covers recurring tasks (G15.1–G15.6).
+func testRepeat(t *testing.T, open factory) {
+	ctx := context.Background()
+	clk := newClock() // Tue 2026-11-10
+	s := open(t, Options{Now: clk.Now})
+	day := func(v string) task.Date { d, _ := task.ParseDate(v); return d }
+	weekly := task.Rule{Every: 1, Unit: task.Week, Days: task.Weekdays(0).With(time.Tuesday)}
+
+	p, err := s.CreateProject(ctx, "home")
+	if err != nil {
+		t.Fatal(err)
+	}
+	created, err := s.CreateTask(ctx, task.Task{Name: "Water plants", Description: "ferns", ProjectID: p.ID, Priority: 2,
+		Start: day("2026-11-08"), Due: day("2026-11-10"), DurationMin: 10, Repeat: weekly})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created.SeriesID != created.ID {
+		t.Errorf("a new repeating task starts its own series: %q vs %q", created.SeriesID, created.ID)
+	}
+	if got, _ := s.GetTask(ctx, created.ID); got.Repeat != weekly || got.SeriesID != created.ID {
+		t.Errorf("stored rule %+v series %q", got.Repeat, got.SeriesID)
+	}
+
+	// Completing it: the occurrence is done and loses the rule; the next one
+	// carries everything on (G15.3, G15.4).
+	done, err := s.SetDone(ctx, created.ID, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !done.Done() || !done.Repeat.IsZero() || done.SeriesID != created.ID {
+		t.Errorf("completed occurrence: done %v rule %+v series %q", done.Done(), done.Repeat, done.SeriesID)
+	}
+	next := onlyOpen(t, s, created.ID)
+	want := task.Task{Name: "Water plants", Description: "ferns", ProjectID: p.ID, Priority: 2,
+		Start: day("2026-11-15"), Due: day("2026-11-17"), DurationMin: 10, Repeat: weekly, SeriesID: created.ID}
+	next.ID, next.CreatedAt, next.UpdatedAt = "", time.Time{}, time.Time{}
+	if next != want {
+		t.Errorf("next occurrence:\n got  %+v\n want %+v", next, want)
+	}
+
+	// Completing an already completed occurrence creates nothing more.
+	if _, err := s.SetDone(ctx, created.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	// Reopening only reopens it (G15.5).
+	reopened, err := s.SetDone(ctx, created.ID, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reopened.Done() || !reopened.Repeat.IsZero() {
+		t.Errorf("reopened: done %v rule %+v", reopened.Done(), reopened.Repeat)
+	}
+	if n := len(series(t, s, created.ID)); n != 2 {
+		t.Errorf("series has %d tasks, want 2", n)
+	}
+
+	// Overdue by weeks: the next one is after today (G15.3).
+	next = onlyOpenRepeating(t, s, created.ID)
+	clk.Advance(30 * 24 * time.Hour) // Thu 2026-12-10
+	if _, err := s.SetDone(ctx, next.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	if n := onlyOpenRepeating(t, s, created.ID); n.Due != day("2026-12-15") {
+		t.Errorf("after an overdue completion the next is due %s, want 2026-12-15", n.Due)
+	}
+
+	// Archiving stops the series; completing an archived task creates nothing;
+	// unarchiving brings the rule back (G15.6).
+	n := onlyOpenRepeating(t, s, created.ID)
+	if _, err := s.Archive(ctx, n.ID); err != nil {
+		t.Fatal(err)
+	}
+	before := len(series(t, s, created.ID))
+	if _, err := s.SetDone(ctx, n.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	if len(series(t, s, created.ID)) != before {
+		t.Error("completing an archived task created an occurrence")
+	}
+	if u, err := s.Unarchive(ctx, n.ID); err != nil || u.Repeat != weekly {
+		t.Errorf("unarchived rule %+v, %v", u.Repeat, err)
+	}
+
+	// Setting a rule on a plain task starts a series; clearing it keeps the
+	// series ID for history.
+	plain, err := s.CreateTask(ctx, task.Task{Name: "Plain", Due: day("2026-12-11")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plain.SeriesID != "" {
+		t.Error("a plain task has no series")
+	}
+	plain.Repeat = task.Rule{Every: 1, Unit: task.Day}
+	up, err := s.UpdateTask(ctx, plain)
+	if err != nil || up.SeriesID != plain.ID || up.Repeat != plain.Repeat {
+		t.Fatalf("update with a rule: %+v, %v", up, err)
+	}
+	up.Repeat = task.Rule{}
+	if up, err = s.UpdateTask(ctx, up); err != nil || !up.Repeat.IsZero() || up.SeriesID != plain.ID {
+		t.Errorf("clearing the rule: %+v, %v", up, err)
+	}
+
+	// A rule needs a due date.
+	if _, err := s.CreateTask(ctx, task.Task{Name: "No due", Repeat: weekly}); !errors.Is(err, task.ErrInvalid) {
+		t.Errorf("repeating without a due date: %v", err)
+	}
+}
+
+// series lists the tasks in a series.
+func series(t *testing.T, s Store, id task.ID) []task.Task {
+	t.Helper()
+	all, err := s.ListTasks(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return task.Filter(all, func(x task.Task) bool { return x.SeriesID == id })
+}
+
+// onlyOpen is the series' one open task other than the reopened original.
+func onlyOpen(t *testing.T, s Store, id task.ID) task.Task {
+	t.Helper()
+	open := task.Filter(series(t, s, id), func(x task.Task) bool { return !x.Done() })
+	if len(open) != 1 {
+		t.Fatalf("series has %d open tasks, want 1", len(open))
+	}
+	return open[0]
+}
+
+// onlyOpenRepeating is the series' open task that still carries the rule.
+func onlyOpenRepeating(t *testing.T, s Store, id task.ID) task.Task {
+	t.Helper()
+	open := task.Filter(series(t, s, id), func(x task.Task) bool { return !x.Done() && !x.Repeat.IsZero() })
+	if len(open) != 1 {
+		t.Fatalf("series has %d open repeating tasks, want 1", len(open))
+	}
+	return open[0]
 }

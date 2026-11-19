@@ -200,7 +200,7 @@ func encMinutes(m int) any {
 }
 
 const taskColumns = `id, name, description, project_id, priority, start_date, due_date,
-	duration_minutes, created_at, updated_at, completed_at, archived_at`
+	duration_minutes, created_at, updated_at, completed_at, archived_at, repeat, series_id`
 
 type scanner interface{ Scan(...any) error }
 
@@ -210,18 +210,23 @@ func scanTask(r scanner) (task.Task, error) {
 		project, start, due              sql.NullString
 		minutes                          sql.NullInt64
 		created, updated, done, archived sql.NullString
+		repeat, series                   sql.NullString
 	)
 	if err := r.Scan(&t.ID, &t.Name, &t.Description, &project, &t.Priority, &start, &due,
-		&minutes, &created, &updated, &done, &archived); err != nil {
+		&minutes, &created, &updated, &done, &archived, &repeat, &series); err != nil {
 		return task.Task{}, err
 	}
 	t.ProjectID = task.ID(project.String)
+	t.SeriesID = task.ID(series.String)
 	t.DurationMin = int(minutes.Int64)
 	var err error
 	if t.Start, err = task.ParseDate(start.String); err != nil {
 		return t, err
 	}
 	if t.Due, err = task.ParseDate(due.String); err != nil {
+		return t, err
+	}
+	if t.Repeat, err = task.DecodeRule(repeat.String); err != nil {
 		return t, err
 	}
 	for _, f := range []struct {
@@ -304,18 +309,40 @@ func (s *SQLite) CreateTask(ctx context.Context, t task.Task) (task.Task, error)
 	if err := checkActiveProject(ctx, s.db, t.ProjectID); err != nil {
 		return task.Task{}, err
 	}
+	if t, err = s.insertTask(ctx, s.db, t); err != nil {
+		return task.Task{}, err
+	}
+	return t, nil
+}
+
+type execer interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+}
+
+// insertTask assigns a new task's ID, timestamps and series (G15.1) and
+// inserts it, open and unarchived.
+func (s *SQLite) insertTask(ctx context.Context, db execer, t task.Task) (task.Task, error) {
+	var err error
 	if t.ID, err = s.opts.NewID(); err != nil {
 		return task.Task{}, err
 	}
 	now := s.opts.Now().UTC().Truncate(time.Millisecond)
 	t.CreatedAt, t.UpdatedAt = now, now
-	_, err = s.db.ExecContext(ctx, "INSERT INTO tasks ("+taskColumns+") VALUES (?,?,?,?,?,?,?,?,?,?,NULL,NULL)",
+	t = withSeries(t)
+	_, err = db.ExecContext(ctx, "INSERT INTO tasks ("+taskColumns+") VALUES (?,?,?,?,?,?,?,?,?,?,NULL,NULL,?,?)",
 		string(t.ID), t.Name, t.Description, encID(t.ProjectID), t.Priority, encDate(t.Start), encDate(t.Due),
-		encMinutes(t.DurationMin), encTime(t.CreatedAt), encTime(t.UpdatedAt))
+		encMinutes(t.DurationMin), encTime(t.CreatedAt), encTime(t.UpdatedAt), encRule(t.Repeat), encID(t.SeriesID))
 	if err != nil {
 		return task.Task{}, mapErr(err)
 	}
 	return t, nil
+}
+
+func encRule(r task.Rule) any {
+	if r.IsZero() {
+		return nil
+	}
+	return r.Encode()
 }
 
 // UpdateTask implements Store.
@@ -333,10 +360,12 @@ func (s *SQLite) UpdateTask(ctx context.Context, t task.Task) (task.Task, error)
 		}
 	}
 	now := s.opts.Now().UTC().Truncate(time.Millisecond)
+	t.SeriesID = cur.SeriesID
+	t = withSeries(t)
 	res, err := s.db.ExecContext(ctx, `UPDATE tasks SET name=?, description=?, project_id=?, priority=?,
-		start_date=?, due_date=?, duration_minutes=?, updated_at=? WHERE id=?`,
+		start_date=?, due_date=?, duration_minutes=?, repeat=?, series_id=?, updated_at=? WHERE id=?`,
 		t.Name, t.Description, encID(t.ProjectID), t.Priority, encDate(t.Start), encDate(t.Due),
-		encMinutes(t.DurationMin), encTime(now), string(t.ID))
+		encMinutes(t.DurationMin), encRule(t.Repeat), encID(t.SeriesID), encTime(now), string(t.ID))
 	if err != nil {
 		return task.Task{}, mapErr(err)
 	}
@@ -374,12 +403,31 @@ func (s *SQLite) setTime(ctx context.Context, id task.ID, column string, value a
 	return s.GetTask(ctx, id)
 }
 
-// SetDone implements Store.
+// SetDone implements Store. Completing a repeating task also creates its
+// next occurrence (G15.3), in the same transaction.
 func (s *SQLite) SetDone(ctx context.Context, id task.ID, done bool) (task.Task, error) {
 	if !done {
 		return s.setTime(ctx, id, "completed_at", nil, false)
 	}
-	return s.setTime(ctx, id, "completed_at", encTime(s.opts.Now()), true)
+	cur, err := s.GetTask(ctx, id)
+	if err != nil {
+		return task.Task{}, err
+	}
+	if !repeats(cur) {
+		return s.setTime(ctx, id, "completed_at", encTime(s.opts.Now()), true)
+	}
+	err = s.inTx(ctx, func(tx *sql.Tx) error {
+		if _, err := tx.ExecContext(ctx, "UPDATE tasks SET completed_at = ?, repeat = NULL, updated_at = ? WHERE id = ?",
+			encTime(s.opts.Now()), s.nowText(), string(id)); err != nil {
+			return err
+		}
+		_, err := s.insertTask(ctx, tx, nextFor(cur, s.opts.Now()))
+		return err
+	})
+	if err != nil {
+		return task.Task{}, err
+	}
+	return s.GetTask(ctx, id)
 }
 
 // Archive implements Store.

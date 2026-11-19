@@ -26,8 +26,10 @@ internal/paths/      XDG data/config directory resolution
 internal/config/     config.toml settings (theme; G9.1)
 internal/lock/       single-instance lock on the data directory (flock; G8.4)
 internal/task/       domain model, validation, view filters, sort orders, groupings,
-                     per-day due counts for the Calendar (G14.2) (pure)
-internal/nlp/        quick-add parser (PLAN.md Appendix A), ParseDate, ParseDuration (pure)
+                     per-day due counts for the Calendar (G14.2), repeat rules and the
+                     next occurrence (recur.go, G15) (pure)
+internal/nlp/        quick-add parser (PLAN.md Appendix A), ParseDate, ParseDuration,
+                     repeat phrases and ParseRepeat (repeat.go, G15.7) (pure)
 internal/store/      Store interface; SQLite implementation + embedded migrations, integrity
                      check (G8.5) and pre-migration backups (G8.2);
                      in-memory implementation for UI tests (both pass the same contract tests)
@@ -61,7 +63,7 @@ docs/images/         README screenshots and GIFs, logo icon (SVG); the README lo
 - **Widths are terminal cells, not bytes or runes.** One Figma cell is 12×24 px. Truncate plain text with `widget.Truncate` before styling it, and lay out with `Fit` / `Spread`.
 - **Every rendered line must be exactly the target width.** The golden tests assert this.
 - **Keys live in the key map** (`internal/ui/keymap.go`). Add a list key there, with its hint and shortcuts-dialog labels, rather than in a `switch`; hint rows are built with `hintFor`/`listHints`, and `TestHintsMatchKeyMap` checks them.
-- **The quick-add grammar is PLAN.md Appendix A.** `TestAppendixA` is that table row for row. Change the grammar only through a gate, and update the appendix and the test together.
+- **The quick-add grammar is PLAN.md Appendix A.** `TestAppendixA` and `TestAppendixARepeating` are its tables row for row. Change the grammar only through a gate, and update the appendix and the test together.
 
 ## Data conventions
 

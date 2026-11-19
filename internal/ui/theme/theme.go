@@ -38,6 +38,7 @@ type Glyphs struct {
 	Ellipsis   string // truncation tail
 	Times      string // dimensions, e.g. 80×24
 	Bar        string // one task in a Calendar bar (G14.3)
+	Repeat     string // marks a repeat rule (G15.8)
 }
 
 // UnicodeGlyphs are the symbols used in the Figma designs.
@@ -50,7 +51,7 @@ func UnicodeGlyphs() Glyphs {
 		TL: "┌", TR: "┐", BL: "└", BR: "┘",
 		Thumb: "█", Track: "│",
 		Ellipsis: "…", Times: "×",
-		Bar: "▆",
+		Bar: "▆", Repeat: "↻",
 	}
 }
 
@@ -65,7 +66,7 @@ func ASCIIGlyphs() Glyphs {
 		TL: "+", TR: "+", BL: "+", BR: "+",
 		Thumb: "#", Track: "|",
 		Ellipsis: "...", Times: "x",
-		Bar: "#",
+		Bar: "#", Repeat: "@",
 	}
 }
 

@@ -17,6 +17,7 @@ const (
 	KindDuration
 	KindStart
 	KindDue
+	KindRepeat // G15.7
 	numKinds
 )
 
@@ -33,6 +34,9 @@ type Result struct {
 	Priority    int       // 1–4, or 0 if none was given
 	Start, Due  task.Date // zero = none
 	DurationMin int       // 0 = none
+	// Repeat is the repeat rule, anchored to Due, which it sets to its first
+	// occurrence (G15.2, G15.7). Zero = doesn't repeat.
+	Repeat task.Rule
 	// Spans are the tokens that count (the last of each kind), for
 	// highlighting. Earlier tokens of the same kind stay in the name.
 	Spans []Span
@@ -81,6 +85,7 @@ type match struct {
 	priority    int
 	minutes     int
 	date        task.Date
+	repeat      repeatPhrase
 }
 
 // Parse parses a quick-add line (PLAN.md Appendix A, decisions G5.1a–f).
@@ -135,6 +140,9 @@ func Parse(input string, today task.Date) Result {
 			r.Due = m.date
 		}
 	}
+	if m := winners[KindRepeat]; m != nil {
+		r.Repeat, r.Due = anchor(m.repeat, r.Due, today)
+	}
 
 	var name []string
 	for i, w := range ws {
@@ -177,6 +185,9 @@ func matchAt(ws []word, lower []string, i int, today task.Date) (match, bool) {
 	case strings.HasPrefix(w, "@"):
 		return datePhrase(lower, i, w[1:], KindDue, true, today)
 	default:
+		if p, ok := parseRepeat(lower, i, today); ok {
+			return match{kind: KindRepeat, first: i, last: p.last, repeat: p}, true
+		}
 		return datePhrase(lower, i, w, KindDue, false, today)
 	}
 	return match{}, false

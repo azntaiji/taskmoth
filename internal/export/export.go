@@ -26,7 +26,7 @@ const FormatVersion = 1
 // CSVHeader is the CSV's first row (G10.3).
 var CSVHeader = []string{
 	"id", "name", "description", "project", "priority", "start", "due", "duration_min",
-	"created_at", "updated_at", "completed_at", "archived_at",
+	"created_at", "updated_at", "completed_at", "archived_at", "repeat", "series_id",
 }
 
 // ParseFormat normalizes a format name, or explains which ones exist.
@@ -74,6 +74,7 @@ func writeCSV(w io.Writer, tasks []task.Task, names map[task.ID]string) error {
 			string(t.ID), t.Name, t.Description, names[t.ProjectID], strconv.Itoa(t.Priority),
 			t.Start.String(), t.Due.String(), dur,
 			stamp(t.CreatedAt), stamp(t.UpdatedAt), stamp(t.CompletedAt), stamp(t.ArchivedAt),
+			t.Repeat.String(), string(t.SeriesID),
 		}
 		if err := cw.Write(row); err != nil {
 			return err
@@ -112,6 +113,10 @@ type jsonTask struct {
 	UpdatedAt   *string `json:"updated_at"`
 	CompletedAt *string `json:"completed_at"`
 	ArchivedAt  *string `json:"archived_at"`
+	// Repeat is the rule in words, as quick add reads it ("every mon");
+	// SeriesID links a series' occurrences (G15.1).
+	Repeat   *string `json:"repeat"`
+	SeriesID *string `json:"series_id"`
 }
 
 func writeJSON(w io.Writer, projects []task.Project, tasks []task.Task, names map[task.ID]string, now time.Time) error {
@@ -133,6 +138,7 @@ func writeJSON(w io.Writer, projects []task.Project, tasks []task.Task, names ma
 			ProjectID: null(string(t.ProjectID)), Start: null(t.Start.String()), Due: null(t.Due.String()),
 			CreatedAt: null(stamp(t.CreatedAt)), UpdatedAt: null(stamp(t.UpdatedAt)),
 			CompletedAt: null(stamp(t.CompletedAt)), ArchivedAt: null(stamp(t.ArchivedAt)),
+			Repeat: null(t.Repeat.String()), SeriesID: null(string(t.SeriesID)),
 		}
 		if t.ProjectID != "" {
 			jt.Project = null(names[t.ProjectID])

@@ -8,7 +8,7 @@ taskmoth ▸ Today                                       tues · 2026-11-10 · 1
           ┌─ Edit Due date ──────────────────────────────────────────┐         │
   [ ]  P2 │                                                          │  today  │
           │ Enter date in YYYY-MM-DD format or use natural language. │         │
-          │ Examples: 2026-11-02, today, in 3 days, next monday      │         │
+          │ Examples: 2026-11-02, next monday, every friday          │         │
   [ ]  P3 │                                                          │overdue  │
           │ > 2026-11-10                                             │         │
           │ tues · 2026-11-10 · 1 done / 3 due                       │         │

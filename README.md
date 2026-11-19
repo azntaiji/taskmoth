@@ -48,6 +48,10 @@ Press `q` and type. Dates, projects, priorities and durations are picked out as 
   <img src="docs/images/upcoming.png" alt="The Upcoming view, grouped by day" width="49%">
 </p>
 
+### Repeat it
+
+Write the repeat the way you'd say it: `Water plants every mon and thu`, `Pay rent every 1st`, `Book club every first mon`, `Bins every other thursday`, `Anniversary every nov 20`, `Daily standup`. Rows show `↻ every mon, thu`. Completing one keeps it as done and adds the next one, so the Calendar's done counts stay true; the status bar says when it's next due. To change or stop a repeat, edit the due date (`t`): type a new rule, a date to move just this one, or clear it.
+
 ### Plan your week without over-assigning
 
 `g c` opens the **Calendar**: every day from today on, one line each, with a bar and a count of the tasks due that day (`1 done / 5 due`) and the time still estimated. Weeks have headers, the status bar totals the selected week, and overdue tasks sit in a row at the top. `enter` opens a day's tasks, and `q` adds a task due on the selected day. While you set a due date, in Edit Due date or with `@` in quick add, the dialog shows how many tasks that day already has.
@@ -92,7 +96,7 @@ An empty Inbox, Someday list or project gets a moth and a note for the day. Clea
 
 ### Planned
 
-A Homebrew tap, recurring tasks, times of day, user themes, time tracking and analytics. See [PLAN.md §7](PLAN.md#7-future-features-out-of-scope).
+A Homebrew tap, times of day, user themes, time tracking and analytics. See [PLAN.md §7](PLAN.md#7-future-features-out-of-scope).
 
 ## Install
 
@@ -155,7 +159,7 @@ Quit with `ctrl+q` or `ctrl+c` (`q` is "add task"). Press `?` for every key.
 | `home`/`end`, `g g`/`G` | jump to top/bottom |
 | `q` | add a task (quick add; see below); from a project's list it goes to that project |
 | `e` | open the selected task (`esc` returns to the list) |
-| `n` `d` `v` `r` `t` `y` `p` | edit name, description, project, start date, due date, duration, priority |
+| `n` `d` `v` `r` `t` `y` `p` | edit name, description, project, start date, due date (or repeat: `every friday`), duration, priority |
 | `space` | complete (then select the next open task) / reopen the selected task |
 | `s` | cycle the sort (priority → due → start → duration → name) |
 | `o` | cycle grouping: Today by project → priority → duration; All, Someday and Overdue by project → priority → due → duration; projects by priority → due → duration; then none |
@@ -201,7 +205,8 @@ Everything lives in one SQLite file, `taskmoth.db`, in `~/.local/share/taskmoth`
 `taskmoth --export csv` or `taskmoth --export json` prints every task, open, completed and archived, to standard output; add `--output FILE` to write a file instead. It works while taskmoth is open.
 
 - **JSON** has a `projects` array and a `tasks` array; each task carries its `project_id` and `project` name.
-- **CSV** has one row per task: `id,name,description,project,priority,start,due,duration_min,created_at,updated_at,completed_at,archived_at`.
+- **CSV** has one row per task: `id,name,description,project,priority,start,due,duration_min,created_at,updated_at,completed_at,archived_at,repeat,series_id`.
+- `repeat` is the rule in words (`every mon, wed`), and `series_id` links every occurrence of a repeating task.
 - Dates are `YYYY-MM-DD`, timestamps are RFC 3339 in UTC, and durations are in minutes. Unset values are `null` in JSON and empty in CSV.
 
 ```sh
@@ -225,8 +230,9 @@ Type the task name. Anything taskmoth recognises is highlighted and shown in the
 | `#project` | project (`tab` completes; an unknown name asks before creating it) |
 | `p1`–`p4` or `!p1`–`!p4` | priority (default P4) |
 | `~30m`, `~1.5h`, `~1h30m`, `~2 hours` | estimated duration |
+| `every day`, `every mon, wed`, `every other week`, `every 3 days`, `every weekday`, `every 15th`, `every last day`, `every first mon`, `every nov 20`, `ev 2 weeks`, `daily`, `weekly`, `… starting jan 1` | repeat, and the first due date unless one is given |
 
-If something is recognised by mistake ("Pay may 5 bill"), put the cursor on it and press `ctrl+t` to keep it as text, or type `\` before the word. Times and repeats (`at 4pm`, `every monday`) stay in the name. The full grammar is [PLAN.md Appendix A](PLAN.md#appendix-a-quick-add-grammar-g51-approved-2026-11-12).
+If something is recognised by mistake ("Pay may 5 bill"), put the cursor on it and press `ctrl+t` to keep it as text, or type `\` before the word. Times (`at 4pm`) stay in the name. The full grammar is [PLAN.md Appendix A](PLAN.md#appendix-a-quick-add-grammar-g51-approved-2026-11-12).
 
 ## Development
 
